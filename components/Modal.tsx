@@ -55,7 +55,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: 'danger' | 'primary';
+  confirmVariant?: 'danger' | 'primary' | 'warning';
 }
 
 export function ConfirmModal({
@@ -88,6 +88,8 @@ export function ConfirmModal({
           className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
             confirmVariant === 'danger'
               ? 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600'
+              : confirmVariant === 'warning'
+              ? 'bg-yellow-600 dark:bg-yellow-500 text-white hover:bg-yellow-700 dark:hover:bg-yellow-600'
               : 'bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200'
           }`}
         >
