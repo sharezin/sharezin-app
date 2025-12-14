@@ -2,7 +2,7 @@
 
 import { Receipt, Participant } from '@/types';
 import { useCalculations } from '@/hooks/useCalculations';
-import { formatCurrency } from '@/lib/calculations';
+import { formatCurrency, calculateServiceChargeAmount } from '@/lib/calculations';
 
 interface SummaryCardProps {
   receipt: Receipt;
@@ -10,6 +10,7 @@ interface SummaryCardProps {
 
 export function SummaryCard({ receipt }: SummaryCardProps) {
   const { participantTotals, receiptTotal } = useCalculations(receipt);
+  const serviceChargeAmount = calculateServiceChargeAmount(receipt);
 
   const sortedParticipants = [...receipt.participants].sort((a, b) => 
     a.name.localeCompare(b.name)
@@ -51,12 +52,12 @@ export function SummaryCard({ receipt }: SummaryCardProps) {
         </div>
       </div>
 
-      {(receipt.serviceCharge > 0 || receipt.cover > 0) && (
+      {(serviceChargeAmount > 0 || receipt.cover > 0) && (
         <div className="pt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {receipt.serviceCharge > 0 && (
+          {serviceChargeAmount > 0 && (
             <div className="flex justify-between">
-              <span>Taxa do garçom:</span>
-              <span>{formatCurrency(receipt.serviceCharge)}</span>
+              <span>Taxa do garçom ({receipt.serviceChargePercent}%):</span>
+              <span>{formatCurrency(serviceChargeAmount)}</span>
             </div>
           )}
           {receipt.cover > 0 && (
