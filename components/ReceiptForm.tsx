@@ -14,7 +14,7 @@ interface ReceiptFormProps {
 
 export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
   const [title, setTitle] = useState(receipt.title);
-  const [serviceCharge, setServiceCharge] = useState(receipt.serviceCharge.toString());
+  const [serviceCharge, setServiceCharge] = useState(receipt.serviceChargePercent.toString());
   const [cover, setCover] = useState(receipt.cover.toString());
   const [participants, setParticipants] = useState<Participant[]>(receipt.participants);
   const [items, setItems] = useState<ReceiptItem[]>(receipt.items);
@@ -29,7 +29,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
       title,
       participants,
       items,
-      serviceCharge: parseFloat(serviceCharge.replace(',', '.')) || 0,
+      serviceChargePercent: parseFloat(serviceCharge.replace(',', '.')) || 0,
       cover: parseFloat(cover.replace(',', '.')) || 0,
     };
     onSave(updatedReceipt);
@@ -44,11 +44,8 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
 
   const handleRemoveParticipant = (id: string) => {
     setParticipants(participants.filter(p => p.id !== id));
-    // Remove o participante dos itens também
-    setItems(items.map(item => ({
-      ...item,
-      participantIds: item.participantIds.filter(pid => pid !== id),
-    })));
+    // Remove os itens do participante também
+    setItems(items.filter(item => item.participantId !== id));
   };
 
   const handleAddItem = (item: ReceiptItem) => {
@@ -125,7 +122,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
           title,
           participants,
           items,
-          serviceCharge: parseFloat(serviceCharge.replace(',', '.')) || 0,
+          serviceChargePercent: parseFloat(serviceCharge.replace(',', '.')) || 0,
           cover: parseFloat(cover.replace(',', '.')) || 0,
         }} />
       )}
