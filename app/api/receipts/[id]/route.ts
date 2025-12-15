@@ -68,10 +68,10 @@ export async function GET(
       supabase.from('deletion_requests').select('*').eq('receipt_id', receiptId),
     ]);
 
-    // Buscar dados dos participantes
-    const participantIds = participantsResult.data?.map(p => p.participant_id) || [];
-    const { data: participants } = participantIds.length > 0
-      ? await supabase.from('participants').select('*').in('id', participantIds)
+    // Buscar dados dos participantes do recibo
+    const receiptParticipantIds = participantsResult.data?.map(p => p.participant_id) || [];
+    const { data: participants } = receiptParticipantIds.length > 0
+      ? await supabase.from('participants').select('*').in('id', receiptParticipantIds)
       : { data: [] };
 
     return NextResponse.json({
