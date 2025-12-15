@@ -3,10 +3,8 @@ import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 
 // GET /api/receipts/[id] - Buscar recibo por ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// Assinatura compatível com tipos do Next.js no build da Vercel
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -39,9 +37,9 @@ export async function GET(
       .select('id')
       .eq('user_id', user.id);
 
-    const participantIds = userParticipants?.map(p => p.id) || [];
+    const participantIds = (userParticipants || []).map((p: { id: string }) => p.id);
     
-    let hasAccess = isCreator;
+    let hasAccess: boolean = isCreator;
     
     if (!hasAccess && participantIds.length > 0) {
       const { data: participantCheck } = await supabase
@@ -50,7 +48,8 @@ export async function GET(
         .eq('receipt_id', receiptId)
         .in('participant_id', participantIds);
       
-      hasAccess = participantCheck && participantCheck.length > 0;
+      const hasParticipant = Array.isArray(participantCheck) && participantCheck.length > 0;
+      hasAccess = hasParticipant;
     }
 
     if (!hasAccess) {
@@ -122,7 +121,13 @@ export async function PUT(
     }
 
     // Atualizar recibo
-    const updateData: any = {
+    const updateData: {
+      updated_at: string;
+      title?: string;
+      service_charge_percent?: number;
+      cover?: number;
+      is_closed?: boolean;
+    } = {
       updated_at: new Date().toISOString(),
     };
 
