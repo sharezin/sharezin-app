@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 
 // GET /api/receipts/invite/[inviteCode] - Buscar recibo por código de convite
+// Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
 export async function GET(
   request: NextRequest,
-  { params }: { params: { inviteCode: string } }
+  { params }: { params: Promise<{ inviteCode: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const supabase = createServerClient();
-    const inviteCode = params.inviteCode.toUpperCase();
+    const inviteCode = resolvedParams.inviteCode.toUpperCase();
 
     const { data: receipt, error } = await supabase
       .from('receipts')

@@ -3,8 +3,12 @@ import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 
 // GET /api/receipts/[id] - Buscar recibo por ID
-// Assinatura compatível com tipos do Next.js no build da Vercel
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const resolvedParams = await params;
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -12,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
   try {
     const supabase = createServerClient();
-    const receiptId = params.id;
+    const receiptId = resolvedParams.id;
 
     // Buscar recibo
     const { data: receipt, error: receiptError } = await supabase
@@ -94,8 +98,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // PUT /api/receipts/[id] - Atualizar recibo
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -104,7 +109,7 @@ export async function PUT(
   try {
     const body = await request.json();
     const supabase = createServerClient();
-    const receiptId = params.id;
+    const receiptId = resolvedParams.id;
 
     // Verificar se é o criador
     const { data: receipt } = await supabase
@@ -164,8 +169,9 @@ export async function PUT(
 // DELETE /api/receipts/[id] - Excluir recibo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -173,7 +179,7 @@ export async function DELETE(
 
   try {
     const supabase = createServerClient();
-    const receiptId = params.id;
+    const receiptId = resolvedParams.id;
 
     // Verificar se é o criador
     const { data: receipt } = await supabase
