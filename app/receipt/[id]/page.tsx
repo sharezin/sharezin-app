@@ -72,9 +72,9 @@ export default function ReceiptDetailPage() {
       return;
     }
 
-    // Verifica se o participante fechou sua participação
+    // Verifica se o participante fechou sua participação (mas o criador sempre pode adicionar)
     const currentParticipant = receipt.participants.find(p => p.id === participant.id);
-    if (currentParticipant?.isClosed) {
+    if (currentParticipant?.isClosed && !isCreator) {
       setAlertModal({
         isOpen: true,
         title: 'Participação Fechada',
@@ -337,7 +337,7 @@ export default function ReceiptDetailPage() {
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/')}
               className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               aria-label="Voltar"
             >
@@ -360,12 +360,13 @@ export default function ReceiptDetailPage() {
                 {receipt.title}
               </h1>
             </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                aria-label="Menu de opções"
-              >
+            {!receipt.isClosed && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label="Menu de opções"
+                >
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -425,7 +426,8 @@ export default function ReceiptDetailPage() {
                   </div>
                 </>
               )}
-            </div>
+              </div>
+            )}
           </div>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm">
             {new Date(receipt.date).toLocaleDateString('pt-BR', {
@@ -658,6 +660,30 @@ export default function ReceiptDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Botão flutuante para adicionar produto */}
+      {!receipt.isClosed && 
+        (isCreator || !receipt.participants.find(p => p.id === currentUserId)?.isClosed) && (
+        <button
+          onClick={() => setShowProductForm(true)}
+          className="fixed bottom-24 right-4 sm:right-6 w-14 h-14 rounded-full bg-black dark:bg-white text-white dark:text-black shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all hover:scale-110 flex items-center justify-center z-40"
+          aria-label="Adicionar Produto"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      )}
 
       {showProductForm && (
         <ProductForm

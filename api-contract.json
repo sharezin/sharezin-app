@@ -1,0 +1,731 @@
+{
+  "version": "1.0.0",
+  "description": "Contrato de API para o Sharezin - Divisão de Recibos",
+  "baseUrl": "https://api.sharezin.com/v1",
+  "authentication": {
+    "type": "Bearer Token",
+    "header": "Authorization",
+    "format": "Bearer {token}",
+    "note": "Todas as requisições (exceto login/register) requerem autenticação"
+  },
+  "schemas": {
+    "Participant": {
+      "id": "string (UUID)",
+      "name": "string",
+      "groupId": "string (UUID, optional)",
+      "isClosed": "boolean (optional, default: false)"
+    },
+    "PendingParticipant": {
+      "id": "string (UUID)",
+      "name": "string",
+      "requestedAt": "string (ISO 8601)",
+      "userId": "string (UUID)"
+    },
+    "Group": {
+      "id": "string (UUID)",
+      "name": "string",
+      "participantIds": "string[] (array de UUIDs)"
+    },
+    "ReceiptItem": {
+      "id": "string (UUID)",
+      "name": "string",
+      "quantity": "number",
+      "price": "number",
+      "participantId": "string (UUID)",
+      "addedAt": "string (ISO 8601)"
+    },
+    "DeletionRequest": {
+      "id": "string (UUID)",
+      "itemId": "string (UUID)",
+      "participantId": "string (UUID)",
+      "requestedAt": "string (ISO 8601)"
+    },
+    "Receipt": {
+      "id": "string (UUID)",
+      "title": "string",
+      "date": "string (ISO 8601)",
+      "creatorId": "string (UUID)",
+      "inviteCode": "string (único, 6-8 caracteres alfanuméricos)",
+      "participants": "Participant[]",
+      "pendingParticipants": "PendingParticipant[]",
+      "items": "ReceiptItem[]",
+      "deletionRequests": "DeletionRequest[]",
+      "serviceChargePercent": "number (0-100)",
+      "cover": "number",
+      "total": "number (calculado automaticamente)",
+      "isClosed": "boolean",
+      "createdAt": "string (ISO 8601)",
+      "updatedAt": "string (ISO 8601)"
+    },
+    "User": {
+      "id": "string (UUID)",
+      "name": "string",
+      "email": "string",
+      "createdAt": "string (ISO 8601)"
+    }
+  },
+  "endpoints": {
+    "auth": {
+      "login": {
+        "method": "POST",
+        "path": "/auth/login",
+        "description": "Autentica um usuário",
+        "request": {
+          "body": {
+            "email": "string",
+            "password": "string"
+          }
+        },
+        "response": {
+          "200": {
+            "token": "string (JWT)",
+            "user": "User"
+          },
+          "401": {
+            "error": "string",
+            "message": "Credenciais inválidas"
+          }
+        }
+      },
+      "register": {
+        "method": "POST",
+        "path": "/auth/register",
+        "description": "Registra um novo usuário",
+        "request": {
+          "body": {
+            "name": "string",
+            "email": "string",
+            "password": "string"
+          }
+        },
+        "response": {
+          "201": {
+            "token": "string (JWT)",
+            "user": "User"
+          },
+          "400": {
+            "error": "string",
+            "message": "Email já cadastrado"
+          }
+        }
+      },
+      "me": {
+        "method": "GET",
+        "path": "/auth/me",
+        "description": "Retorna informações do usuário autenticado",
+        "response": {
+          "200": {
+            "user": "User"
+          },
+          "401": {
+            "error": "string",
+            "message": "Não autenticado"
+          }
+        }
+      }
+    },
+    "receipts": {
+      "list": {
+        "method": "GET",
+        "path": "/receipts",
+        "description": "Lista todos os recibos do usuário autenticado",
+        "queryParams": {
+          "includeClosed": "boolean (optional, default: false)",
+          "limit": "number (optional)",
+          "offset": "number (optional)"
+        },
+        "response": {
+          "200": {
+            "receipts": "Receipt[]",
+            "total": "number"
+          }
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/receipts/{id}",
+        "description": "Busca um recibo por ID",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Sem permissão para acessar este recibo"
+          }
+        }
+      },
+      "getByInviteCode": {
+        "method": "GET",
+        "path": "/receipts/invite/{inviteCode}",
+        "description": "Busca um recibo por código de convite",
+        "pathParams": {
+          "inviteCode": "string"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Código de convite inválido"
+          }
+        }
+      },
+      "create": {
+        "method": "POST",
+        "path": "/receipts",
+        "description": "Cria um novo recibo",
+        "request": {
+          "body": {
+            "title": "string (required)",
+            "serviceChargePercent": "number (optional, default: 0)",
+            "cover": "number (optional, default: 0)",
+            "groupId": "string (UUID, optional) - adiciona participantes do grupo automaticamente"
+          }
+        },
+        "response": {
+          "201": {
+            "receipt": "Receipt"
+          },
+          "400": {
+            "error": "string",
+            "message": "Dados inválidos"
+          }
+        }
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/receipts/{id}",
+        "description": "Atualiza um recibo existente",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "request": {
+          "body": {
+            "title": "string (optional)",
+            "serviceChargePercent": "number (optional)",
+            "cover": "number (optional)",
+            "isClosed": "boolean (optional)"
+          }
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode atualizar o recibo"
+          }
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/receipts/{id}",
+        "description": "Exclui um recibo",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "response": {
+          "204": {},
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode excluir o recibo"
+          }
+        }
+      },
+      "close": {
+        "method": "POST",
+        "path": "/receipts/{id}/close",
+        "description": "Fecha um recibo (apenas criador)",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode fechar o recibo"
+          }
+        }
+      }
+    },
+    "receiptItems": {
+      "add": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/items",
+        "description": "Adiciona um item ao recibo",
+        "pathParams": {
+          "receiptId": "string (UUID)"
+        },
+        "request": {
+          "body": {
+            "name": "string (required)",
+            "quantity": "number (required, min: 0.01)",
+            "price": "number (required, min: 0.01)",
+            "participantId": "string (UUID, optional) - se não informado, usa o usuário autenticado"
+          }
+        },
+        "response": {
+          "201": {
+            "item": "ReceiptItem",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado"
+          },
+          "400": {
+            "error": "string",
+            "message": "Recibo fechado ou participação fechada"
+          }
+        }
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/receipts/{receiptId}/items/{itemId}",
+        "description": "Atualiza um item do recibo",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "itemId": "string (UUID)"
+        },
+        "request": {
+          "body": {
+            "name": "string (optional)",
+            "quantity": "number (optional)",
+            "price": "number (optional)",
+            "participantId": "string (UUID, optional)"
+          }
+        },
+        "response": {
+          "200": {
+            "item": "ReceiptItem",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Item ou recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Sem permissão para atualizar este item"
+          }
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/receipts/{receiptId}/items/{itemId}",
+        "description": "Remove um item do recibo (apenas criador ou dono do item)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "itemId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Item ou recibo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Sem permissão para excluir este item"
+          }
+        }
+      },
+      "requestDeletion": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/items/{itemId}/request-deletion",
+        "description": "Solicita a exclusão de um item (participante solicita, criador aprova)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "itemId": "string (UUID)"
+        },
+        "response": {
+          "201": {
+            "deletionRequest": "DeletionRequest",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Item ou recibo não encontrado"
+          },
+          "400": {
+            "error": "string",
+            "message": "Solicitação já existe ou item não pertence ao usuário"
+          }
+        }
+      },
+      "approveDeletion": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/deletion-requests/{requestId}/approve",
+        "description": "Aprova uma solicitação de exclusão (apenas criador)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "requestId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Solicitação não encontrada"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode aprovar exclusões"
+          }
+        }
+      },
+      "rejectDeletion": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/deletion-requests/{requestId}/reject",
+        "description": "Rejeita uma solicitação de exclusão (apenas criador)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "requestId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Solicitação não encontrada"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode rejeitar exclusões"
+          }
+        }
+      }
+    },
+    "participants": {
+      "joinByInvite": {
+        "method": "POST",
+        "path": "/receipts/invite/{inviteCode}/join",
+        "description": "Solicita participação em um recibo usando código de convite",
+        "pathParams": {
+          "inviteCode": "string"
+        },
+        "request": {
+          "body": {
+            "name": "string (optional) - se não informado, usa nome do usuário autenticado"
+          }
+        },
+        "response": {
+          "201": {
+            "pendingParticipant": "PendingParticipant",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Código de convite inválido"
+          },
+          "400": {
+            "error": "string",
+            "message": "Já é participante ou recibo fechado"
+          }
+        }
+      },
+      "accept": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/participants/{pendingParticipantId}/accept",
+        "description": "Aceita um participante pendente (apenas criador)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "pendingParticipantId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "participant": "Participant",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Participante pendente não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode aceitar participantes"
+          }
+        }
+      },
+      "reject": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/participants/{pendingParticipantId}/reject",
+        "description": "Rejeita um participante pendente (apenas criador)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "pendingParticipantId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Participante pendente não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode rejeitar participantes"
+          }
+        }
+      },
+      "closeParticipation": {
+        "method": "POST",
+        "path": "/receipts/{receiptId}/participants/me/close",
+        "description": "Fecha a participação do usuário autenticado no recibo",
+        "pathParams": {
+          "receiptId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "participant": "Participant",
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Recibo não encontrado ou usuário não é participante"
+          }
+        }
+      },
+      "remove": {
+        "method": "DELETE",
+        "path": "/receipts/{receiptId}/participants/{participantId}",
+        "description": "Remove um participante do recibo (apenas criador)",
+        "pathParams": {
+          "receiptId": "string (UUID)",
+          "participantId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "receipt": "Receipt"
+          },
+          "404": {
+            "error": "string",
+            "message": "Participante não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Apenas o criador pode remover participantes"
+          }
+        }
+      }
+    },
+    "groups": {
+      "list": {
+        "method": "GET",
+        "path": "/groups",
+        "description": "Lista todos os grupos do usuário autenticado",
+        "response": {
+          "200": {
+            "groups": "Group[]"
+          }
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/groups/{id}",
+        "description": "Busca um grupo por ID",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "group": "Group",
+            "participants": "Participant[]"
+          },
+          "404": {
+            "error": "string",
+            "message": "Grupo não encontrado"
+          }
+        }
+      },
+      "create": {
+        "method": "POST",
+        "path": "/groups",
+        "description": "Cria um novo grupo",
+        "request": {
+          "body": {
+            "name": "string (required)"
+          }
+        },
+        "response": {
+          "201": {
+            "group": "Group"
+          },
+          "400": {
+            "error": "string",
+            "message": "Dados inválidos"
+          }
+        }
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/groups/{id}",
+        "description": "Atualiza um grupo existente",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "request": {
+          "body": {
+            "name": "string (optional)",
+            "participantIds": "string[] (optional)"
+          }
+        },
+        "response": {
+          "200": {
+            "group": "Group"
+          },
+          "404": {
+            "error": "string",
+            "message": "Grupo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Sem permissão para atualizar este grupo"
+          }
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/groups/{id}",
+        "description": "Exclui um grupo",
+        "pathParams": {
+          "id": "string (UUID)"
+        },
+        "response": {
+          "204": {},
+          "404": {
+            "error": "string",
+            "message": "Grupo não encontrado"
+          },
+          "403": {
+            "error": "string",
+            "message": "Sem permissão para excluir este grupo"
+          }
+        }
+      },
+      "addParticipant": {
+        "method": "POST",
+        "path": "/groups/{groupId}/participants",
+        "description": "Adiciona um participante ao grupo",
+        "pathParams": {
+          "groupId": "string (UUID)"
+        },
+        "request": {
+          "body": {
+            "name": "string (required)"
+          }
+        },
+        "response": {
+          "201": {
+            "participant": "Participant",
+            "group": "Group"
+          },
+          "404": {
+            "error": "string",
+            "message": "Grupo não encontrado"
+          }
+        }
+      },
+      "removeParticipant": {
+        "method": "DELETE",
+        "path": "/groups/{groupId}/participants/{participantId}",
+        "description": "Remove um participante do grupo",
+        "pathParams": {
+          "groupId": "string (UUID)",
+          "participantId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "group": "Group"
+          },
+          "404": {
+            "error": "string",
+            "message": "Participante ou grupo não encontrado"
+          }
+        }
+      },
+      "getParticipants": {
+        "method": "GET",
+        "path": "/groups/{groupId}/participants",
+        "description": "Lista participantes de um grupo",
+        "pathParams": {
+          "groupId": "string (UUID)"
+        },
+        "response": {
+          "200": {
+            "participants": "Participant[]"
+          },
+          "404": {
+            "error": "string",
+            "message": "Grupo não encontrado"
+          }
+        }
+      }
+    }
+  },
+  "businessRules": {
+    "receipts": {
+      "inviteCode": "Deve ser único, 6-8 caracteres alfanuméricos, gerado automaticamente",
+      "total": "Calculado automaticamente: (soma dos itens) + (taxa do garçom) + (cover)",
+      "isClosed": "Quando fechado, não permite adicionar novos itens",
+      "creatorPermissions": "Criador pode: fechar recibo, excluir itens, aprovar/rejeitar exclusões, aceitar/rejeitar participantes"
+    },
+    "items": {
+      "addition": "Só pode adicionar se recibo não estiver fechado e participação não estiver fechada",
+      "deletion": "Criador pode excluir diretamente. Participantes devem solicitar exclusão",
+      "deletionRequest": "Participante só pode solicitar exclusão de seus próprios itens"
+    },
+    "participants": {
+      "autoCreation": "Participantes são criados automaticamente quando adicionam itens",
+      "pendingApproval": "Participantes que entram por código de convite precisam de aprovação do criador",
+      "closedParticipation": "Participante pode fechar sua própria participação, mas criador sempre pode adicionar itens"
+    },
+    "groups": {
+      "usage": "Grupos podem ser usados para adicionar múltiplos participantes de uma vez ao criar recibo"
+    }
+  },
+  "errorCodes": {
+    "400": "Bad Request - Dados inválidos",
+    "401": "Unauthorized - Token inválido ou ausente",
+    "403": "Forbidden - Sem permissão para realizar a ação",
+    "404": "Not Found - Recurso não encontrado",
+    "409": "Conflict - Conflito (ex: código de convite já existe)",
+    "500": "Internal Server Error - Erro interno do servidor"
+  },
+  "notes": {
+    "calculations": "O cálculo do total do recibo deve ser feito no backend para garantir consistência",
+    "timestamps": "Todos os timestamps devem estar em formato ISO 8601 (UTC)",
+    "ids": "Todos os IDs devem ser UUIDs v4",
+    "pagination": "Endpoints de listagem devem suportar paginação quando aplicável",
+    "realTime": "Considerar implementação de WebSockets para atualizações em tempo real no futuro"
+  }
+}
+

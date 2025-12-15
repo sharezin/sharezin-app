@@ -6,8 +6,10 @@ import Link from 'next/link';
 export function BottomNav() {
   const pathname = usePathname();
 
-  // Não mostrar bottom nav em páginas de detalhes (receipt/[id]) e criação (receipt/new)
-  const shouldHide = pathname?.startsWith('/receipt/');
+  // Não mostrar bottom nav em páginas de detalhes, criação, login e registro
+  const shouldHide = pathname?.startsWith('/receipt/') || 
+                     pathname === '/login' || 
+                     pathname === '/register';
   if (shouldHide) {
     return null;
   }
