@@ -1,11 +1,30 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useReceipts } from '@/hooks/useReceipts';
+import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
 
 export default function HistoryPage() {
-  const { receipts, loading } = useReceipts();
+  const { receipts, loading, loadClosedReceipts } = useReceipts();
+  const { user } = useAuth();
+  const hasLoadedRef = useRef(false);
+
+  // Carrega apenas recibos fechados quando o componente monta ou o usuário muda
+  useEffect(() => {
+    if (user?.id && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadClosedReceipts();
+    }
+  }, [user?.id, loadClosedReceipts]);
+
+  // Reset flag quando o usuário mudar
+  useEffect(() => {
+    if (!user?.id) {
+      hasLoadedRef.current = false;
+    }
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -15,8 +34,11 @@ export default function HistoryPage() {
     );
   }
 
+  // Filtra apenas recibos fechados
+  const closedReceipts = receipts.filter(receipt => receipt.isClosed);
+
   // Agrupa recibos por data
-  const groupedByDate = receipts.reduce((acc, receipt) => {
+  const groupedByDate = closedReceipts.reduce((acc, receipt) => {
     const date = new Date(receipt.date).toLocaleDateString('pt-BR', {
       year: 'numeric',
       month: 'long',
@@ -49,7 +71,7 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        {receipts.length === 0 ? (
+        {closedReceipts.length === 0 ? (
           <div className="text-center py-12">
             <div className="mb-4">
               <svg

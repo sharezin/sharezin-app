@@ -1,13 +1,18 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useCalculations } from '@/hooks/useCalculations';
+import { useAuth } from '@/hooks/useAuth';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { ProductForm } from '@/components/ProductForm';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
+import { InviteCodeModal } from '@/components/InviteCodeModal';
+import { ParticipantReceiptModal } from '@/components/ParticipantReceiptModal';
 import { Receipt, ReceiptItem, Participant, DeletionRequest, PendingParticipant } from '@/types';
 import { formatCurrency, calculateItemTotal, calculateItemsTotal, calculateServiceChargeAmount } from '@/lib/calculations';
+import { jsPDF } from 'jspdf';
 
 export default function ReceiptDetailPage() {
   const params = useParams();
@@ -36,52 +41,98 @@ export default function ReceiptDetailPage() {
     itemId: null,
   });
   const [showMenu, setShowMenu] = useState(false);
-  const [closeReceiptConfirm, setCloseReceiptConfirm] = useState(false);
+  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
+  const [closingReceipt, setClosingReceipt] = useState(false);
+  const [closingParticipation, setClosingParticipation] = useState(false);
+  const [acceptingParticipantId, setAcceptingParticipantId] = useState<string | null>(null);
+  const [rejectingParticipantId, setRejectingParticipantId] = useState<string | null>(null);
+  const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
 
-  useEffect(() => {
+  const { user, loading: authLoading } = useAuth();
+  const { receiptTotal, participantTotals } = useCalculations(receipt);
+  
+  // Pull-to-refresh para atualizar o recibo manualmente
+  const { isRefreshing, pullDistance, pullProgress } = usePullToRefresh({
+    onRefresh: async () => {
+      if (receipt?.id) {
+        await loadReceipt();
+      }
+    },
+    enabled: !!receipt?.id && !loading,
+  });
+
+  // ID e nome do usuário atual - usar useMemo para evitar mudanças desnecessárias
+  const currentUserId = useMemo(() => user?.id || '', [user?.id]);
+  const currentUserName = useMemo(() => user?.name || 'Usuário', [user?.name]);
+
+  // Verifica se o usuário atual é o criador do recibo
+  const isCreator = useMemo(() => receipt?.creatorId === currentUserId, [receipt?.creatorId, currentUserId]);
+
+  const loadReceipt = async () => {
     const id = params.id as string;
-    const loadedReceipt = getReceiptById(id);
+    console.log('[ReceiptDetail] loadReceipt called for id:', id);
+    console.log('[ReceiptDetail] Current user:', { id: user?.id, name: user?.name });
+    const loadedReceipt = await getReceiptById(id);
     
     if (!loadedReceipt) {
+      console.log('[ReceiptDetail] Receipt not found, redirecting...');
       router.push('/');
       return;
     }
     
+    console.log('[ReceiptDetail] Receipt loaded successfully:', {
+      id: loadedReceipt.id,
+      itemsCount: loadedReceipt.items.length,
+      items: loadedReceipt.items.map(i => ({ 
+        id: i.id, 
+        name: i.name, 
+        participantId: i.participantId,
+        currentUserId: user?.id || '',
+        matches: i.participantId === (user?.id || '')
+      })),
+      currentUserId: user?.id || '',
+    });
     setReceipt(loadedReceipt);
     setLoading(false);
-  }, [params.id, getReceiptById, router]);
+  };
 
-  const { receiptTotal, participantTotals } = useCalculations(receipt);
+  useEffect(() => {
+    // Só carregar o recibo quando o usuário estiver disponível
+    // Isso evita problemas de renderização com currentUserId vazio
+    if (user?.id) {
+      loadReceipt();
+    }
+  }, [params.id, getReceiptById, router, user?.id]);
 
-  // ID do usuário atual (será substituído por conta logada futuramente)
-  const currentUserId = 'default-user';
 
-  // Verifica se o usuário atual é o criador do recibo
-  const isCreator = receipt?.creatorId === currentUserId;
+  // Fallback: Recarrega o recibo quando a página volta a ficar visível (caso Realtime não esteja disponível)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && receipt?.id) {
+        loadReceipt();
+      }
+    };
 
-  const handleAddProduct = (item: ReceiptItem, participant: Participant) => {
-    if (!receipt) return;
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [receipt?.id]);
+
+  const handleAddProduct = async (item: ReceiptItem, participant: Participant) => {
+    if (!receipt) {
+      throw new Error('Recibo não encontrado');
+    }
 
     if (receipt.isClosed) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Recibo Fechado',
-        message: 'Não é possível adicionar produtos a um recibo fechado',
-        variant: 'warning',
-      });
-      return;
+      throw new Error('Não é possível adicionar produtos a um recibo fechado');
     }
 
     // Verifica se o participante fechou sua participação (mas o criador sempre pode adicionar)
     const currentParticipant = receipt.participants.find(p => p.id === participant.id);
     if (currentParticipant?.isClosed && !isCreator) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Participação Fechada',
-        message: 'Você fechou sua participação neste recibo e não pode mais adicionar produtos',
-        variant: 'warning',
-      });
-      return;
+      throw new Error('Você fechou sua participação neste recibo e não pode mais adicionar produtos');
     }
 
     // Verifica se o participante já existe (mesmo nome, case-insensitive)
@@ -109,8 +160,20 @@ export default function ReceiptDetailPage() {
       participants: updatedParticipants,
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar produto. Tente novamente.';
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: errorMessage,
+        variant: 'error',
+      });
+      // Lança o erro para que o ProductForm possa capturar e não fechar o modal
+      throw error;
+    }
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -118,7 +181,7 @@ export default function ReceiptDetailPage() {
     setDeleteConfirm({ isOpen: true, itemId });
   };
 
-  const confirmDeleteItem = () => {
+  const confirmDeleteItem = async () => {
     if (!receipt || !deleteConfirm.itemId) return;
     
     // Remove o item e também remove solicitações relacionadas
@@ -128,12 +191,21 @@ export default function ReceiptDetailPage() {
       deletionRequests: receipt.deletionRequests.filter(req => req.itemId !== deleteConfirm.itemId),
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    setDeleteConfirm({ isOpen: false, itemId: null });
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      setDeleteConfirm({ isOpen: false, itemId: null });
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao excluir produto. Tente novamente.',
+        variant: 'error',
+      });
+    }
   };
 
-  const handleRequestDeletion = (itemId: string) => {
+  const handleRequestDeletion = async (itemId: string) => {
     if (!receipt) return;
 
     // Verifica se já existe uma solicitação para este item
@@ -172,17 +244,26 @@ export default function ReceiptDetailPage() {
       deletionRequests: [...receipt.deletionRequests, newRequest],
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    setAlertModal({
-      isOpen: true,
-      title: 'Sucesso',
-      message: 'Solicitação de exclusão enviada ao criador do recibo',
-      variant: 'success',
-    });
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      setAlertModal({
+        isOpen: true,
+        title: 'Sucesso',
+        message: 'Solicitação de exclusão enviada ao criador do recibo',
+        variant: 'success',
+      });
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao enviar solicitação. Tente novamente.',
+        variant: 'error',
+      });
+    }
   };
 
-  const handleApproveDeletion = (requestId: string) => {
+  const handleApproveDeletion = async (requestId: string) => {
     if (!receipt || !isCreator) return;
 
     const request = receipt.deletionRequests.find(req => req.id === requestId);
@@ -195,11 +276,20 @@ export default function ReceiptDetailPage() {
       deletionRequests: receipt.deletionRequests.filter(req => req.id !== requestId),
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao aprovar exclusão. Tente novamente.',
+        variant: 'error',
+      });
+    }
   };
 
-  const handleRejectDeletion = (requestId: string) => {
+  const handleRejectDeletion = async (requestId: string) => {
     if (!receipt || !isCreator) return;
 
     const updatedReceipt: Receipt = {
@@ -207,8 +297,17 @@ export default function ReceiptDetailPage() {
       deletionRequests: receipt.deletionRequests.filter(req => req.id !== requestId),
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao rejeitar exclusão. Tente novamente.',
+        variant: 'error',
+      });
+    }
   };
 
   // Verifica se há solicitação pendente para um item
@@ -217,11 +316,13 @@ export default function ReceiptDetailPage() {
     return receipt.deletionRequests.find(req => req.itemId === itemId);
   };
 
-  const handleAcceptParticipant = (pendingParticipantId: string) => {
+  const handleAcceptParticipant = async (pendingParticipantId: string) => {
     if (!receipt || !isCreator) return;
 
     const pendingParticipant = receipt.pendingParticipants.find(p => p.id === pendingParticipantId);
     if (!pendingParticipant) return;
+
+    setAcceptingParticipantId(pendingParticipantId);
 
     // Cria o participante
     const newParticipant: Participant = {
@@ -236,66 +337,259 @@ export default function ReceiptDetailPage() {
       participants: [...receipt.participants, newParticipant],
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    
-    setAlertModal({
-      isOpen: true,
-      title: 'Sucesso',
-      message: `${pendingParticipant.name} foi adicionado ao recibo`,
-      variant: 'success',
-    });
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      
+      setAlertModal({
+        isOpen: true,
+        title: 'Sucesso',
+        message: `${pendingParticipant.name} foi adicionado ao recibo`,
+        variant: 'success',
+      });
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao aceitar participante. Tente novamente.',
+        variant: 'error',
+      });
+    } finally {
+      setAcceptingParticipantId(null);
+    }
   };
 
-  const handleRejectParticipant = (pendingParticipantId: string) => {
+  const handleRejectParticipant = async (pendingParticipantId: string) => {
     if (!receipt || !isCreator) return;
 
     const pendingParticipant = receipt.pendingParticipants.find(p => p.id === pendingParticipantId);
     
+    setRejectingParticipantId(pendingParticipantId);
+
     const updatedReceipt: Receipt = {
       ...receipt,
       pendingParticipants: receipt.pendingParticipants.filter(p => p.id !== pendingParticipantId),
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    
-    if (pendingParticipant) {
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      
+      if (pendingParticipant) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Participante rejeitado',
+          message: `A solicitação de ${pendingParticipant.name} foi rejeitada`,
+          variant: 'info',
+        });
+      }
+    } catch (error) {
       setAlertModal({
         isOpen: true,
-        title: 'Participante rejeitado',
-        message: `A solicitação de ${pendingParticipant.name} foi rejeitada`,
-        variant: 'info',
+        title: 'Erro',
+        message: 'Erro ao rejeitar participante. Tente novamente.',
+        variant: 'error',
       });
+    } finally {
+      setRejectingParticipantId(null);
     }
   };
 
-  const handleCloseReceipt = () => {
+  const handleCloseReceipt = async () => {
     if (!receipt || !isCreator) return;
+
+    setClosingReceipt(true);
+    // Não fecha o menu imediatamente para mostrar o loading
 
     const updatedReceipt: Receipt = {
       ...receipt,
       isClosed: true,
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    setShowMenu(false);
-    setCloseReceiptConfirm(false);
-    
-    setAlertModal({
-      isOpen: true,
-      title: 'Recibo Fechado',
-      message: 'O recibo foi fechado. Ninguém poderá mais adicionar produtos.',
-      variant: 'success',
-    });
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      setShowMenu(false); // Fecha o menu apenas após o sucesso
+      
+      setAlertModal({
+        isOpen: true,
+        title: 'Recibo Fechado',
+        message: 'O recibo foi fechado. Ninguém poderá mais adicionar produtos.',
+        variant: 'success',
+      });
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao fechar recibo. Tente novamente.',
+        variant: 'error',
+      });
+    } finally {
+      setClosingReceipt(false);
+    }
   };
 
-  const handleCloseParticipation = () => {
+  const generateReceiptPDF = (receipt: Receipt) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPosition = margin;
+
+    // Função para adicionar texto
+    const addText = (text: string, x: number, y: number, options?: { fontSize?: number; fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic'; align?: 'left' | 'center' | 'right' }) => {
+      doc.setFontSize(options?.fontSize || 10);
+      if (options?.fontStyle) {
+        doc.setFont('helvetica', options.fontStyle);
+      } else {
+        doc.setFont('helvetica', 'normal');
+      }
+      doc.text(text, x, y, { align: options?.align || 'left' });
+    };
+
+    // Header
+    doc.setFillColor(39, 39, 42); // zinc-800
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    addText('Recibo', pageWidth / 2, 20, { fontSize: 18, fontStyle: 'bold', align: 'center' });
+    addText(receipt.title, pageWidth / 2, 30, { fontSize: 12, align: 'center' });
+    
+    yPosition = 50;
+    doc.setTextColor(0, 0, 0);
+
+    // Informações do recibo
+    addText(`Data: ${new Date(receipt.date).toLocaleDateString('pt-BR')}`, margin, yPosition);
+    yPosition += 8;
+    addText(`Código: ${receipt.inviteCode}`, margin, yPosition);
+    yPosition += 15;
+
+    // Linha separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 10;
+
+    // Itens
+    const sortedItems = [...receipt.items].sort(
+      (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+    );
+
+    if (sortedItems.length === 0) {
+      addText('Nenhum item adicionado', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+    } else {
+      sortedItems.forEach((item) => {
+        // Verifica se precisa de nova página
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        const itemTotal = calculateItemTotal(item);
+        const participant = receipt.participants.find(p => p.id === item.participantId);
+        const participantName = participant?.name || 'Desconhecido';
+        const itemName = item.name.length > 25 ? item.name.substring(0, 22) + '...' : item.name;
+        
+        addText(itemName, margin, yPosition);
+        addText(`${item.quantity}x ${formatCurrency(item.price)} - ${participantName}`, margin, yPosition + 5, { fontSize: 9 });
+        addText(formatCurrency(itemTotal), pageWidth - margin, yPosition, { align: 'right', fontStyle: 'bold' });
+        
+        yPosition += 15;
+      });
+    }
+
+    yPosition += 5;
+    
+    // Linha separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 10;
+
+    // Subtotal
+    const itemsTotal = calculateItemsTotal(receipt);
+    if (itemsTotal > 0) {
+      addText('Subtotal (itens):', margin, yPosition);
+      addText(formatCurrency(itemsTotal), pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 8;
+    }
+
+    // Taxa do garçom
+    const serviceChargeAmount = calculateServiceChargeAmount(receipt);
+    if (serviceChargeAmount > 0) {
+      addText(`Taxa do garçom (${receipt.serviceChargePercent}%):`, margin, yPosition);
+      addText(formatCurrency(serviceChargeAmount), pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 8;
+    }
+
+    // Cover
+    if (receipt.cover > 0) {
+      addText('Cover:', margin, yPosition);
+      addText(formatCurrency(receipt.cover), pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 8;
+    }
+
+    yPosition += 5;
+    
+    // Linha separadora
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 10;
+
+    // Total
+    addText('Total', margin, yPosition, { fontSize: 14, fontStyle: 'bold' });
+    addText(formatCurrency(receiptTotal), pageWidth - margin, yPosition, { fontSize: 16, fontStyle: 'bold', align: 'right' });
+
+    yPosition += 15;
+
+    // Resumo por participante
+    if (receipt.participants.length > 0) {
+      // Verifica se precisa de nova página
+      if (yPosition > 220) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 10;
+
+      addText('Resumo por Participante', margin, yPosition, { fontSize: 12, fontStyle: 'bold' });
+      yPosition += 10;
+
+      receipt.participants
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach((participant) => {
+          if (yPosition > 250) {
+            doc.addPage();
+            yPosition = margin;
+          }
+
+          const total = participantTotals[participant.id] || 0;
+          addText(participant.name || 'Sem nome', margin, yPosition);
+          addText(formatCurrency(total), pageWidth - margin, yPosition, { align: 'right', fontStyle: 'bold' });
+          yPosition += 10;
+        });
+    }
+
+    // Rodapé
+    const footerY = doc.internal.pageSize.getHeight() - 15;
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    addText('Gerado pelo Sharezin', pageWidth / 2, footerY, { align: 'center' });
+
+    // Salvar PDF
+    const fileName = `recibo-${receipt.title.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+    doc.save(fileName);
+  };
+
+  const handleCloseParticipation = async () => {
     if (!receipt) return;
 
     const currentParticipant = receipt.participants.find(p => p.id === currentUserId);
     if (!currentParticipant) return;
+
+    setClosingParticipation(true);
+    // Não fecha o menu imediatamente para mostrar o loading
 
     const updatedParticipants = receipt.participants.map(p =>
       p.id === currentUserId ? { ...p, isClosed: true } : p
@@ -306,19 +600,39 @@ export default function ReceiptDetailPage() {
       participants: updatedParticipants,
     };
 
-    const savedReceipt = updateReceipt(updatedReceipt);
-    setReceipt(savedReceipt);
-    setShowMenu(false);
-    
-    setAlertModal({
-      isOpen: true,
-      title: 'Participação Fechada',
-      message: 'Você fechou sua participação. Não poderá mais adicionar produtos neste recibo.',
-      variant: 'success',
-    });
+    try {
+      const savedReceipt = await updateReceipt(updatedReceipt);
+      setReceipt(savedReceipt);
+      setShowMenu(false); // Fecha o menu apenas após o sucesso
+      
+      // Mostrar recibo do participante
+      setShowParticipantReceipt(true);
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao fechar participação. Tente novamente.',
+        variant: 'error',
+      });
+    } finally {
+      setClosingParticipation(false);
+    }
   };
 
-  if (loading || !receipt) {
+  // Ordena itens por data de adição (mais recente primeiro)
+  // Usa useMemo para evitar recálculos desnecessários e garantir estabilidade
+  // IMPORTANTE: Este hook deve estar ANTES de qualquer early return para seguir as regras dos Hooks do React
+  const sortedItems = useMemo(() => {
+    if (!receipt?.items) return [];
+    return [...receipt.items].sort(
+      (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+    );
+  }, [receipt?.items]);
+
+  // Aguardar tanto o recibo quanto o usuário estarem carregados
+  // Isso evita problemas de renderização quando currentUserId ainda não está disponível
+  // IMPORTANTE: Este early return deve estar DEPOIS de todos os hooks
+  if (loading || authLoading || !receipt || !user) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
         <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
@@ -326,13 +640,46 @@ export default function ReceiptDetailPage() {
     );
   }
 
-  // Ordena itens por data de adição (mais recente primeiro)
-  const sortedItems = [...receipt.items].sort(
-    (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
-  );
-
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 dark:bg-black relative">
+      {/* Indicador de pull-to-refresh */}
+      {pullDistance > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 transition-opacity duration-200"
+          style={{
+            transform: `translateY(${Math.min(pullDistance, 80)}px)`,
+            opacity: Math.min(pullProgress, 1),
+          }}
+        >
+          <div className="bg-zinc-800 dark:bg-zinc-900 text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
+            {isRefreshing ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-sm font-medium">Atualizando...</span>
+              </>
+            ) : (
+              <>
+                <svg 
+                  className="h-5 w-5 transition-transform duration-200" 
+                  style={{ transform: `rotate(${pullProgress * 180}deg)` }}
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+                <span className="text-sm font-medium">
+                  {pullProgress >= 1 ? 'Solte para atualizar' : 'Puxe para atualizar'}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
@@ -360,13 +707,13 @@ export default function ReceiptDetailPage() {
                 {receipt.title}
               </h1>
             </div>
-            {!receipt.isClosed && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                  aria-label="Menu de opções"
-                >
+                {!receipt.isClosed && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowMenu(!showMenu)}
+                      className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                      aria-label="Menu de opções"
+                    >
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -387,22 +734,53 @@ export default function ReceiptDetailPage() {
                     className="fixed inset-0 z-40"
                     onClick={() => setShowMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-50">
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setShowInviteCodeModal(true);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded-t-lg flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Ver Código de Convite
+                    </button>
+                    <div className="border-t border-zinc-200 dark:border-zinc-700"></div>
                     {isCreator ? (
                       <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          setCloseReceiptConfirm(true);
-                        }}
-                        disabled={receipt.isClosed}
-                        className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                        onClick={handleCloseReceipt}
+                        disabled={receipt.isClosed || closingReceipt}
+                        className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
                       >
-                        {receipt.isClosed ? 'Recibo Fechado' : 'Fechar Recibo'}
+                        {closingReceipt ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Fechando...
+                          </>
+                        ) : receipt.isClosed ? (
+                          'Recibo Fechado'
+                        ) : (
+                          'Fechar Recibo'
+                        )}
                       </button>
                     ) : (
                       <button
                         onClick={() => {
-                          setShowMenu(false);
                           const currentParticipant = receipt.participants.find(p => p.id === currentUserId);
                           if (currentParticipant?.isClosed) {
                             setAlertModal({
@@ -412,22 +790,32 @@ export default function ReceiptDetailPage() {
                               variant: 'info',
                             });
                           } else {
-                            setCloseReceiptConfirm(true);
+                            handleCloseParticipation();
                           }
                         }}
-                        disabled={receipt.isClosed || receipt.participants.find(p => p.id === currentUserId)?.isClosed}
-                        className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                        disabled={receipt.isClosed || receipt.participants.find(p => p.id === currentUserId)?.isClosed || closingParticipation}
+                        className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
                       >
-                        {receipt.participants.find(p => p.id === currentUserId)?.isClosed 
-                          ? 'Participação Fechada' 
-                          : 'Fechar Minha Participação'}
+                        {closingParticipation ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Fechando...
+                          </>
+                        ) : receipt.participants.find(p => p.id === currentUserId)?.isClosed ? (
+                          'Participação Fechada'
+                        ) : (
+                          'Fechar Minha Participação'
+                        )}
                       </button>
                     )}
                   </div>
                 </>
               )}
-              </div>
-            )}
+                  </div>
+                )}
           </div>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm">
             {new Date(receipt.date).toLocaleDateString('pt-BR', {
@@ -470,14 +858,41 @@ export default function ReceiptDetailPage() {
               )}
             </div>
           )}
+
+          {/* Botão para gerar PDF quando o recibo estiver fechado */}
+          {receipt.isClosed && (
+            <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <button
+                onClick={() => generateReceiptPDF(receipt)}
+                className="w-full px-4 py-3 rounded-lg bg-zinc-800 dark:bg-zinc-700 text-white font-medium hover:bg-zinc-700 dark:hover:bg-zinc-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Baixar Recibo em PDF
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Participantes Pendentes - Apenas para o criador */}
-        {isCreator && receipt.pendingParticipants.length > 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6 mb-6 border border-yellow-200 dark:border-yellow-800">
-            <h3 className="text-lg font-semibold text-black dark:text-zinc-50 mb-4">
-              Participantes Pendentes ({receipt.pendingParticipants.length})
-            </h3>
+        {isCreator && (
+          <>
+            {receipt.pendingParticipants && receipt.pendingParticipants.length > 0 ? (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6 mb-6 border border-yellow-200 dark:border-yellow-800">
+                <h3 className="text-lg font-semibold text-black dark:text-zinc-50 mb-4">
+                  Participantes Pendentes ({receipt.pendingParticipants.length})
+                </h3>
             <div className="space-y-3">
               {receipt.pendingParticipants.map(pending => (
                 <div
@@ -495,21 +910,45 @@ export default function ReceiptDetailPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleAcceptParticipant(pending.id)}
-                      className="px-3 py-1 text-sm rounded-lg bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
+                      disabled={acceptingParticipantId !== null || rejectingParticipantId !== null}
+                      className="px-3 py-1 text-sm rounded-lg bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      Aceitar
+                      {acceptingParticipantId === pending.id ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Aceitando...
+                        </>
+                      ) : (
+                        'Aceitar'
+                      )}
                     </button>
                     <button
                       onClick={() => handleRejectParticipant(pending.id)}
-                      className="px-3 py-1 text-sm rounded-lg bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+                      disabled={acceptingParticipantId !== null || rejectingParticipantId !== null}
+                      className="px-3 py-1 text-sm rounded-lg bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      Rejeitar
+                      {rejectingParticipantId === pending.id ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Rejeitando...
+                        </>
+                      ) : (
+                        'Rejeitar'
+                      )}
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+            ) : null}
+          </>
         )}
 
 
@@ -553,8 +992,8 @@ export default function ReceiptDetailPage() {
                       const itemTotal = calculateItemTotal(item);
                       const deletionRequest = getDeletionRequest(item.id);
                       const isItemOwner = item.participantId === currentUserId;
-                      const canDelete = isCreator;
-                      const canRequestDeletion = isItemOwner && !isCreator && !deletionRequest;
+                      const canDelete = isCreator && !receipt.isClosed;
+                      const canRequestDeletion = isItemOwner && !isCreator && !deletionRequest && !receipt.isClosed;
                       
                       return (
                         <div
@@ -636,7 +1075,7 @@ export default function ReceiptDetailPage() {
                 ) : (
                   <div className="space-y-2">
                     {receipt.participants
-                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                       .map(participant => {
                         const total = participantTotals[participant.id] || 0;
                         return (
@@ -645,7 +1084,7 @@ export default function ReceiptDetailPage() {
                             className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
                           >
                             <span className="font-medium text-black dark:text-zinc-50">
-                              {participant.name}
+                              {participant.name || 'Sem nome'}
                             </span>
                             <span className="text-lg font-semibold text-black dark:text-zinc-50">
                               {formatCurrency(total)}
@@ -689,6 +1128,8 @@ export default function ReceiptDetailPage() {
         <ProductForm
           onAdd={handleAddProduct}
           onClose={() => setShowProductForm(false)}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
         />
       )}
 
@@ -711,19 +1152,24 @@ export default function ReceiptDetailPage() {
         confirmVariant="danger"
       />
 
-      <ConfirmModal
-        isOpen={closeReceiptConfirm}
-        onClose={() => setCloseReceiptConfirm(false)}
-        onConfirm={isCreator ? handleCloseReceipt : handleCloseParticipation}
-        title={isCreator ? "Fechar Recibo" : "Fechar Minha Participação"}
-        message={isCreator 
-          ? "Tem certeza que deseja fechar este recibo? Ninguém poderá mais adicionar produtos."
-          : "Tem certeza que deseja fechar sua participação? Você não poderá mais adicionar produtos neste recibo."
-        }
-        confirmText="Fechar"
-        cancelText="Cancelar"
-        confirmVariant="warning"
-      />
+
+      {receipt && (
+        <>
+          <InviteCodeModal
+            isOpen={showInviteCodeModal}
+            onClose={() => setShowInviteCodeModal(false)}
+            inviteCode={receipt.inviteCode}
+            receiptTitle={receipt.title}
+          />
+          <ParticipantReceiptModal
+            isOpen={showParticipantReceipt}
+            onClose={() => setShowParticipantReceipt(false)}
+            receipt={receipt}
+            participantId={currentUserId}
+            participantName={currentUserName}
+          />
+        </>
+      )}
     </div>
   );
 }

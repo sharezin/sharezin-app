@@ -3,9 +3,12 @@ import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 
 // POST /api/receipts/[id]/close - Fechar recibo
-// Assinatura relaxada para compatibilidade com tipos do Next.js no build da Vercel
-export async function POST(request: NextRequest, context: any) {
-  const { params } = context;
+// Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const resolvedParams = await params;
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -13,7 +16,7 @@ export async function POST(request: NextRequest, context: any) {
 
   try {
     const supabase = createServerClient();
-    const receiptId = params.id;
+    const receiptId = resolvedParams.id;
 
     // Verificar se é o criador
     const { data: receipt } = await supabase

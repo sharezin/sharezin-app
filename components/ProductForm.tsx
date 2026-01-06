@@ -5,14 +5,17 @@ import { ReceiptItem, Participant } from '@/types';
 import { AlertModal } from './Modal';
 
 interface ProductFormProps {
-  onAdd: (item: ReceiptItem, participant: Participant) => void;
+  onAdd: (item: ReceiptItem, participant: Participant) => Promise<void>;
   onClose: () => void;
+  currentUserId?: string;
+  currentUserName?: string;
 }
 
-export function ProductForm({ onAdd, onClose }: ProductFormProps) {
+export function ProductForm({ onAdd, onClose, currentUserId, currentUserName }: ProductFormProps) {
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [price, setPrice] = useState('');
+  const [loading, setLoading] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -25,7 +28,7 @@ export function ProductForm({ onAdd, onClose }: ProductFormProps) {
     variant: 'warning',
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!productName.trim()) {
       setAlertModal({
         isOpen: true,
@@ -54,26 +57,41 @@ export function ProductForm({ onAdd, onClose }: ProductFormProps) {
       return;
     }
 
-    // Participante padrão temporário (será substituído por conta logada futuramente)
-    const participant: Participant = {
-      id: 'default-user',
-      name: 'Usuário',
-    };
+    setLoading(true);
 
-    const item: ReceiptItem = {
-      id: crypto.randomUUID(),
-      name: productName.trim(),
-      quantity: parseFloat(quantity),
-      price: parseFloat(price.replace(',', '.')),
-      participantId: participant.id,
-      addedAt: new Date().toISOString(),
-    };
+    try {
+      // Usa o usuário autenticado ou cria um participante temporário
+      const participant: Participant = {
+        id: currentUserId || crypto.randomUUID(),
+        name: currentUserName || 'Usuário',
+      };
 
-    onAdd(item, participant);
-    setProductName('');
-    setQuantity('1');
-    setPrice('');
-    onClose();
+      const item: ReceiptItem = {
+        id: crypto.randomUUID(),
+        name: productName.trim(),
+        quantity: parseFloat(quantity),
+        price: parseFloat(price.replace(',', '.')),
+        participantId: participant.id,
+        addedAt: new Date().toISOString(),
+      };
+
+      await onAdd(item, participant);
+      
+      // Só fecha o modal e limpa os campos se for sucesso
+      setProductName('');
+      setQuantity('1');
+      setPrice('');
+      onClose();
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao adicionar produto. Tente novamente.',
+        variant: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -129,15 +147,27 @@ export function ProductForm({ onAdd, onClose }: ProductFormProps) {
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            disabled={loading}
+            className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+            disabled={loading}
+            className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Adicionar
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adicionando...
+              </>
+            ) : (
+              'Adicionar'
+            )}
           </button>
         </div>
       </div>

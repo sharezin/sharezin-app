@@ -7,7 +7,6 @@ import { useReceipts } from '@/hooks/useReceipts';
 import { useGroups } from '@/hooks/useGroups';
 import { AlertModal } from '@/components/Modal';
 import { InviteCodeModal } from '@/components/InviteCodeModal';
-import { getParticipantsByGroup } from '@/lib/storage';
 
 export default function NewReceiptPage() {
   const router = useRouter();
@@ -31,7 +30,7 @@ export default function NewReceiptPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [newReceipt, setNewReceipt] = useState<{ id: string; title: string; inviteCode: string } | null>(null);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!title.trim()) {
       setAlertModal({
         isOpen: true,
@@ -42,37 +41,29 @@ export default function NewReceiptPage() {
       return;
     }
 
-    const newReceipt = createReceipt(
-      title.trim(),
-      serviceChargePercent ? parseFloat(serviceChargePercent.replace(',', '.')) : 0,
-      cover ? parseFloat(cover.replace(',', '.')) : 0
-    );
+    try {
+      const newReceipt = await createReceipt(
+        title.trim(),
+        serviceChargePercent ? parseFloat(serviceChargePercent.replace(',', '.')) : 0,
+        cover ? parseFloat(cover.replace(',', '.')) : 0,
+        selectedGroupId || undefined
+      );
 
-    // Se um grupo foi selecionado, adiciona os participantes do grupo ao recibo
-    if (selectedGroupId) {
-      const groupParticipants = getParticipantsByGroup(selectedGroupId);
-      const updatedReceipt = {
-        ...newReceipt,
-        participants: groupParticipants.map(p => ({
-          id: p.id,
-          name: p.name,
-        })),
-      };
-      updateReceipt(updatedReceipt);
-      setNewReceipt({
-        id: updatedReceipt.id,
-        title: updatedReceipt.title,
-        inviteCode: updatedReceipt.inviteCode,
-      });
-    } else {
       setNewReceipt({
         id: newReceipt.id,
         title: newReceipt.title,
         inviteCode: newReceipt.inviteCode,
       });
+      
+      setShowInviteModal(true);
+    } catch (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Erro ao criar recibo. Tente novamente.',
+        variant: 'error',
+      });
     }
-    
-    setShowInviteModal(true);
   };
 
   return (

@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useReceipts } from '@/hooks/useReceipts';
-import { getReceiptByInviteCode } from '@/lib/storage';
-import { Receipt, PendingParticipant } from '@/types';
+import { apiRequest, transformToCamelCase } from '@/lib/api';
+import { Receipt } from '@/types';
 import { AlertModal } from './Modal';
 
 interface SearchReceiptProps {
@@ -12,9 +11,28 @@ interface SearchReceiptProps {
   currentUserName: string;
 }
 
+interface ApiReceipt {
+  id: string;
+  title: string;
+  date: string;
+  creator_id: string;
+  invite_code: string;
+  participants: any[];
+  pending_participants: any[];
+  items: any[];
+  deletion_requests: any[];
+  service_charge_percent: number;
+  cover: number;
+  total: number;
+  is_closed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export function SearchReceipt({ onClose, currentUserId, currentUserName }: SearchReceiptProps) {
   const [inviteCode, setInviteCode] = useState('');
   const [foundReceipt, setFoundReceipt] = useState<Receipt | null>(null);
+  const [loading, setLoading] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -26,9 +44,28 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
     message: '',
     variant: 'info',
   });
-  const { updateReceipt } = useReceipts();
 
-  const handleSearch = () => {
+  const transformReceiptFromApi = (apiReceipt: ApiReceipt): Receipt => {
+    return {
+      id: apiReceipt.id,
+      title: apiReceipt.title,
+      date: apiReceipt.date,
+      creatorId: apiReceipt.creator_id,
+      inviteCode: apiReceipt.invite_code,
+      participants: transformToCamelCase(apiReceipt.participants || []),
+      pendingParticipants: transformToCamelCase(apiReceipt.pending_participants || []),
+      items: transformToCamelCase(apiReceipt.items || []),
+      deletionRequests: transformToCamelCase(apiReceipt.deletion_requests || []),
+      serviceChargePercent: apiReceipt.service_charge_percent || 0,
+      cover: apiReceipt.cover || 0,
+      total: apiReceipt.total || 0,
+      isClosed: apiReceipt.is_closed || false,
+      createdAt: apiReceipt.created_at,
+      updatedAt: apiReceipt.updated_at,
+    };
+  };
+
+  const handleSearch = async () => {
     if (!inviteCode.trim()) {
       setAlertModal({
         isOpen: true,
@@ -39,74 +76,103 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
       return;
     }
 
-    const receipt = getReceiptByInviteCode(inviteCode.trim());
-    
-    if (!receipt) {
+    setLoading(true);
+    try {
+      const response = await apiRequest<{ receipt: ApiReceipt }>(
+        `/api/receipts/invite/${inviteCode.trim().toUpperCase()}`
+      );
+      
+      const receipt = transformReceiptFromApi(response.receipt);
+      
+      // Verifica se é o criador/dono do recibo
+      if (receipt.creatorId === currentUserId) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Aviso',
+          message: 'Você é o responsável por este recibo. Não é necessário entrar novamente.',
+          variant: 'warning',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Verifica se já é participante
+      const isParticipant = receipt.participants.some(p => p.id === currentUserId);
+      if (isParticipant) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Aviso',
+          message: 'Você já é participante deste recibo',
+          variant: 'warning',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Verifica se já está pendente
+      const isPending = receipt.pendingParticipants.some(p => p.userId === currentUserId);
+      if (isPending) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Aviso',
+          message: 'Você já solicitou entrada neste recibo. Aguarde a aprovação do criador.',
+          variant: 'info',
+        });
+        setLoading(false);
+        return;
+      }
+
+      setFoundReceipt(receipt);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar recibo';
       setAlertModal({
         isOpen: true,
         title: 'Não encontrado',
-        message: 'Nenhum recibo encontrado com este código de convite',
+        message: errorMessage.includes('404') || errorMessage.includes('Not Found')
+          ? 'Nenhum recibo encontrado com este código de convite'
+          : errorMessage,
         variant: 'error',
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // Verifica se já é participante
-    const isParticipant = receipt.participants.some(p => p.id === currentUserId);
-    if (isParticipant) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Aviso',
-        message: 'Você já é participante deste recibo',
-        variant: 'warning',
-      });
-      return;
-    }
-
-    // Verifica se já está pendente
-    const isPending = receipt.pendingParticipants.some(p => p.userId === currentUserId);
-    if (isPending) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Aviso',
-        message: 'Você já solicitou entrada neste recibo. Aguarde a aprovação do criador.',
-        variant: 'info',
-      });
-      return;
-    }
-
-    setFoundReceipt(receipt);
   };
 
-  const handleRequestJoin = () => {
+  const handleRequestJoin = async () => {
     if (!foundReceipt) return;
 
-    const newPendingParticipant: PendingParticipant = {
-      id: crypto.randomUUID(),
-      name: currentUserName,
-      userId: currentUserId,
-      requestedAt: new Date().toISOString(),
-    };
+    try {
+      const response = await apiRequest<{ message: string; pendingParticipant: any }>(
+        `/api/receipts/${foundReceipt.id}/request-join`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: currentUserName,
+          }),
+        }
+      );
+      
+      setAlertModal({
+        isOpen: true,
+        title: 'Sucesso',
+        message: 'Solicitação de entrada enviada! O criador do recibo será notificado.',
+        variant: 'success',
+      });
 
-    const updatedReceipt: Receipt = {
-      ...foundReceipt,
-      pendingParticipants: [...foundReceipt.pendingParticipants, newPendingParticipant],
-    };
-
-    updateReceipt(updatedReceipt);
-    
-    setAlertModal({
-      isOpen: true,
-      title: 'Sucesso',
-      message: 'Solicitação de entrada enviada! O criador do recibo será notificado.',
-      variant: 'success',
-    });
-
-    setTimeout(() => {
-      setFoundReceipt(null);
-      setInviteCode('');
-      onClose();
-    }, 2000);
+      setTimeout(() => {
+        setFoundReceipt(null);
+        setInviteCode('');
+        onClose();
+      }, 2000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao enviar solicitação. Tente novamente.';
+      setAlertModal({
+        isOpen: true,
+        title: 'Erro',
+        message: errorMessage,
+        variant: 'error',
+      });
+    }
   };
 
   return (
@@ -135,27 +201,30 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSearch();
+                    if (e.key === 'Enter' && !loading) handleSearch();
                   }}
                   placeholder="Digite o código (ex: ABC123)"
                   autoFocus
                   maxLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-center text-2xl font-bold tracking-wider uppercase"
+                  disabled={loading}
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-center text-2xl font-bold tracking-wider uppercase disabled:opacity-50"
                 />
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSearch}
-                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                  disabled={loading || !inviteCode.trim()}
+                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Buscar
+                  {loading ? 'Buscando...' : 'Buscar'}
                 </button>
               </div>
             </div>
@@ -205,4 +274,3 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
     </>
   );
 }
-

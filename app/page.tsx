@@ -1,66 +1,63 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useReceipts } from '@/hooks/useReceipts';
+import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/calculations';
-import { ConfirmModal } from '@/components/Modal';
 import { SearchReceipt } from '@/components/SearchReceipt';
 
 export default function Home() {
   const router = useRouter();
-  const { receipts, loading, createReceipt, removeReceipt } = useReceipts();
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    isOpen: boolean;
-    receiptId: string | null;
-  }>({
-    isOpen: false,
-    receiptId: null,
-  });
+  const pathname = usePathname();
+  const { receipts, loading, loadOpenReceipts } = useReceipts();
+  const { user } = useAuth();
   const [showSearch, setShowSearch] = useState(false);
+  const hasLoadedRef = useRef(false);
   
-  // ID e nome do usuário atual (será substituído por conta logada futuramente)
-  const currentUserId = 'default-user';
-  const currentUserName = 'Usuário';
+  // ID e nome do usuário atual
+  const currentUserId = user?.id || '';
+  const currentUserName = user?.name || 'Usuário';
 
-  // Filtra recibos: não mostra recibos fechados, mas mostra se o participante apenas fechou sua participação
-  const filteredReceipts = receipts.filter(receipt => {
-    // Não mostra recibos completamente fechados
-    if (receipt.isClosed) {
-      return false;
+  // Carrega recibos apenas uma vez quando o usuário estiver disponível e estiver na página home
+  useEffect(() => {
+    if (user?.id && pathname === '/' && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadOpenReceipts();
     }
-    
-    // Mostra o recibo se o usuário é o criador
-    if (receipt.creatorId === currentUserId) {
-      return true;
+  }, [user?.id, pathname, loadOpenReceipts]);
+
+  // Reset flag quando mudar de página ou usuário
+  useEffect(() => {
+    if (pathname !== '/' || !user?.id) {
+      hasLoadedRef.current = false;
     }
+  }, [pathname, user?.id]);
+
+  // Recarrega recibos quando a página volta a ficar visível (navegação de volta)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id && pathname === '/') {
+        // Permite recarregar quando volta a ficar visível (navegação de volta)
+        loadOpenReceipts();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Verifica se o usuário é participante
-    const userParticipant = receipt.participants.find(p => p.id === currentUserId);
-    if (userParticipant) {
-      // Mostra independente de ter fechado ou não sua participação (desde que o recibo não esteja fechado)
-      return true;
-    }
-    
-    return false;
-  });
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.id, pathname, loadOpenReceipts]);
+
+  // Home mostra apenas recibos abertos (a API já retorna apenas abertos)
+  // A API já retorna apenas recibos do usuário autenticado (criador ou participante)
+  const filteredReceipts = receipts;
 
   const handleCreateReceipt = () => {
     router.push('/receipt/new');
   };
 
-  const handleDeleteReceipt = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDeleteConfirm({ isOpen: true, receiptId: id });
-  };
-
-  const confirmDelete = () => {
-    if (deleteConfirm.receiptId) {
-      removeReceipt(deleteConfirm.receiptId);
-    }
-    setDeleteConfirm({ isOpen: false, receiptId: null });
-  };
 
   if (loading) {
     return (
@@ -162,28 +159,12 @@ export default function Home() {
                       </div>
                     </div>
                   </a>
-                  <button
-                    onClick={(e) => handleDeleteReceipt(e, receipt.id)}
-                    className="absolute top-4 right-4 px-3 py-1 text-sm rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors z-10"
-                  >
-                    Excluir
-                  </button>
                 </div>
               ))}
           </div>
         )}
       </div>
 
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, receiptId: null })}
-        onConfirm={confirmDelete}
-        title="Excluir Recibo"
-        message="Tem certeza que deseja excluir este recibo?"
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        confirmVariant="danger"
-      />
 
       {showSearch && (
         <SearchReceipt

@@ -2,88 +2,220 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Receipt } from '@/types';
-import { getReceipts, saveReceipt, deleteReceipt, getReceipt } from '@/lib/storage';
+import { apiRequest, transformToCamelCase } from '@/lib/api';
 import { calculateReceiptTotal } from '@/lib/calculations';
-import { generateInviteCode } from '@/lib/utils';
+
+interface ApiReceipt {
+  id: string;
+  title: string;
+  date: string;
+  creator_id: string;
+  invite_code: string;
+  participants: any[];
+  pending_participants: any[];
+  items: any[];
+  deletion_requests: any[];
+  service_charge_percent: number;
+  cover: number;
+  total: number;
+  is_closed: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export function useReceipts() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadReceipts();
-  }, []);
+  const loadReceipts = useCallback(async (includeClosed: boolean = false) => {
+    // Verifica se há token de autenticação antes de fazer a requisição
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      setReceipts([]);
+      setLoading(false);
+      return;
+    }
 
-  const loadReceipts = useCallback(() => {
+    setLoading(true);
+    setError(null);
     try {
-      const loadedReceipts = getReceipts();
-      setReceipts(loadedReceipts);
-    } catch (error) {
-      console.error('Erro ao carregar recibos:', error);
+      // Busca recibos com ou sem fechados dependendo do parâmetro
+      const url = includeClosed 
+        ? '/api/receipts?includeClosed=true'
+        : '/api/receipts';
+      const response = await apiRequest<{ receipts: ApiReceipt[] }>(url);
+      const transformedReceipts = response.receipts.map(transformReceiptFromApi);
+      setReceipts(transformedReceipts);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar recibos';
+      console.error('Erro ao carregar recibos:', err);
+      setError(errorMessage);
+      // Em caso de erro de autenticação, limpa a lista
+      if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
+        setReceipts([]);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const createReceipt = useCallback((
+  // Removido carregamento automático - deve ser chamado explicitamente pelos componentes
+
+  const createReceipt = useCallback(async (
     title: string,
     serviceChargePercent: number = 0,
-    cover: number = 0
-  ): Receipt => {
-    const newReceipt: Receipt = {
-      id: crypto.randomUUID(),
-      title,
-      date: new Date().toISOString(),
-      creatorId: 'default-user', // ID do criador (será substituído por conta logada futuramente)
-      inviteCode: generateInviteCode(),
-      participants: [],
-      pendingParticipants: [],
-      items: [],
-      deletionRequests: [],
-      serviceChargePercent,
-      cover,
-      total: 0,
-      isClosed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    saveReceipt(newReceipt);
-    loadReceipts();
-    return newReceipt;
+    cover: number = 0,
+    groupId?: string
+  ): Promise<Receipt> => {
+    setError(null);
+    try {
+      const response = await apiRequest<{ receipt: ApiReceipt }>('/api/receipts', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          serviceChargePercent,
+          cover,
+          groupId,
+        }),
+      });
+      
+      const receipt = transformReceiptFromApi(response.receipt);
+      await loadReceipts();
+      return receipt;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar recibo';
+      console.error('Erro ao criar recibo:', err);
+      setError(errorMessage);
+      throw err;
+    }
   }, [loadReceipts]);
 
-  const updateReceipt = useCallback((receipt: Receipt) => {
-    // Recalcula o total
-    const total = calculateReceiptTotal(receipt);
-    const updatedReceipt = {
-      ...receipt,
-      total,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    saveReceipt(updatedReceipt);
-    loadReceipts();
-    return updatedReceipt;
+  const updateReceipt = useCallback(async (receipt: Receipt): Promise<Receipt> => {
+    setError(null);
+    try {
+      // Recalcula o total antes de enviar
+      const total = calculateReceiptTotal(receipt);
+      const receiptToUpdate = {
+        ...receipt,
+        total,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const response = await apiRequest<{ receipt: ApiReceipt }>(`/api/receipts/${receipt.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: receiptToUpdate.title,
+          serviceChargePercent: receiptToUpdate.serviceChargePercent,
+          cover: receiptToUpdate.cover,
+          isClosed: receiptToUpdate.isClosed,
+          total,
+          participants: receiptToUpdate.participants,
+          items: receiptToUpdate.items,
+          pendingParticipants: receiptToUpdate.pendingParticipants, // Incluir pendingParticipants
+          deletionRequests: receiptToUpdate.deletionRequests, // Incluir deletionRequests
+        }),
+      });
+
+      const updatedReceipt = transformReceiptFromApi(response.receipt);
+      await loadReceipts();
+      return updatedReceipt;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar recibo';
+      console.error('Erro ao atualizar recibo:', err);
+      setError(errorMessage);
+      throw err;
+    }
   }, [loadReceipts]);
 
-  const removeReceipt = useCallback((id: string) => {
-    deleteReceipt(id);
-    loadReceipts();
+  const removeReceipt = useCallback(async (id: string) => {
+    setError(null);
+    try {
+      await apiRequest(`/api/receipts/${id}`, {
+        method: 'DELETE',
+      });
+      await loadReceipts();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir recibo';
+      console.error('Erro ao excluir recibo:', err);
+      setError(errorMessage);
+      throw err;
+    }
   }, [loadReceipts]);
 
-  const getReceiptById = useCallback((id: string): Receipt | null => {
-    return getReceipt(id);
+  const getReceiptById = useCallback(async (id: string): Promise<Receipt | null> => {
+    setError(null);
+    try {
+      const response = await apiRequest<{ receipt: ApiReceipt }>(`/api/receipts/${id}`);
+      return transformReceiptFromApi(response.receipt);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar recibo';
+      console.error('Erro ao buscar recibo:', err);
+      setError(errorMessage);
+      return null;
+    }
+  }, []);
+
+  // Função para carregar apenas recibos abertos (home)
+  const loadOpenReceipts = useCallback(() => {
+    return loadReceipts(false);
+  }, [loadReceipts]);
+
+  // Função para carregar apenas recibos fechados (histórico)
+  const loadClosedReceipts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiRequest<{ receipts: ApiReceipt[]; total: number }>(
+        `/api/receipts?onlyClosed=true`
+      );
+      const transformedReceipts = response.receipts.map(transformReceiptFromApi);
+      setReceipts(transformedReceipts);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar recibos fechados';
+      console.error('Erro ao carregar recibos fechados:', err);
+      setError(errorMessage);
+      if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
+        setReceipts([]);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return {
     receipts,
     loading,
+    error,
     createReceipt,
     updateReceipt,
     removeReceipt,
     getReceiptById,
     refreshReceipts: loadReceipts,
+    loadOpenReceipts,
+    loadClosedReceipts,
   };
 }
 
+/**
+ * Transforma um recibo da API (snake_case) para o formato do frontend (camelCase)
+ */
+function transformReceiptFromApi(apiReceipt: ApiReceipt): Receipt {
+  return {
+    id: apiReceipt.id,
+    title: apiReceipt.title,
+    date: apiReceipt.date,
+    creatorId: apiReceipt.creator_id,
+    inviteCode: apiReceipt.invite_code,
+    participants: transformToCamelCase(apiReceipt.participants || []),
+    pendingParticipants: transformToCamelCase(apiReceipt.pending_participants || []),
+    items: transformToCamelCase(apiReceipt.items || []),
+    deletionRequests: transformToCamelCase(apiReceipt.deletion_requests || []),
+    serviceChargePercent: apiReceipt.service_charge_percent || 0,
+    cover: apiReceipt.cover || 0,
+    total: apiReceipt.total || 0,
+    isClosed: apiReceipt.is_closed || false,
+    createdAt: apiReceipt.created_at,
+    updatedAt: apiReceipt.updated_at,
+  };
+}

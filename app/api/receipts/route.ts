@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const includeClosed = searchParams.get('includeClosed') === 'true';
+    const onlyClosed = searchParams.get('onlyClosed') === 'true'; // Novo parâmetro para retornar apenas fechados
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
@@ -52,9 +53,15 @@ export async function GET(request: NextRequest) {
       query = query.eq('creator_id', user.id);
     }
 
-    if (!includeClosed) {
+    // Filtrar por status de fechamento
+    if (onlyClosed) {
+      // Se onlyClosed=true, retornar apenas recibos fechados (para histórico)
+      query = query.eq('is_closed', true);
+    } else if (!includeClosed) {
+      // Se includeClosed=false, retornar apenas recibos abertos (para home)
       query = query.eq('is_closed', false);
     }
+    // Se includeClosed=true e onlyClosed=false, retornar todos (abertos e fechados)
 
     const { data: receipts, error } = await query;
 
@@ -74,6 +81,17 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('receipt_id', receipt.id);
 
+        const { data: receiptParticipants } = await supabase
+          .from('receipt_participants')
+          .select('participant_id')
+          .eq('receipt_id', receipt.id);
+
+        // Buscar dados dos participantes do recibo
+        const receiptParticipantIds = receiptParticipants?.map(p => p.participant_id) || [];
+        const { data: participants } = receiptParticipantIds.length > 0
+          ? await supabase.from('participants').select('*').in('id', receiptParticipantIds)
+          : { data: [] };
+
         const { data: pendingParticipants } = await supabase
           .from('pending_participants')
           .select('*')
@@ -84,12 +102,13 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('receipt_id', receipt.id);
 
-        return {
-          ...receipt,
-          items: items || [],
-          pendingParticipants: pendingParticipants || [],
-          deletionRequests: deletionRequests || [],
-        };
+            return {
+              ...receipt,
+              items: items || [],
+              participants: participants || [],
+              pending_participants: pendingParticipants || [],
+              deletion_requests: deletionRequests || [],
+            };
       })
     );
 
@@ -168,13 +187,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        receipt: {
-          ...receipt,
-          participants: [],
-          pendingParticipants: [],
-          items: [],
-          deletionRequests: [],
-        },
+            receipt: {
+              ...receipt,
+              participants: [],
+              pending_participants: [],
+              items: [],
+              deletion_requests: [],
+            },
       },
       { status: 201 }
     );

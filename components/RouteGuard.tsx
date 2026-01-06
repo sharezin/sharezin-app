@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface AuthProviderProps {
+interface RouteGuardProps {
   children: React.ReactNode;
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
+// Componente para proteger rotas e verificar autenticação
+// Agora usa o Context compartilhado, evitando múltiplas requisições
+export function RouteGuard({ children }: RouteGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { checkAuth } = useAuth();
+  const { user, loading, checkAuth } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Rotas públicas que não precisam de autenticação
   const publicRoutes = ['/login', '/register'];
@@ -26,8 +27,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
+      // Se já temos o usuário carregado do Context, não precisa verificar novamente
+      if (user) {
+        setIsChecking(false);
+        return;
+      }
+
+      // Se ainda está carregando do Context, aguardar
+      if (loading) {
+        return;
+      }
+
+      // Se não há usuário e não está carregando, verificar autenticação
       const authenticated = await checkAuth();
-      setIsAuthenticated(authenticated);
       setIsChecking(false);
 
       if (!authenticated) {
@@ -36,7 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     verifyAuth();
-  }, [pathname, isPublicRoute, checkAuth, router]);
+  }, [pathname, isPublicRoute, user, loading, checkAuth, router]);
 
   if (isChecking && !isPublicRoute) {
     return (
@@ -46,10 +58,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     );
   }
 
-  if (!isPublicRoute && !isAuthenticated && !isChecking) {
+  if (!isPublicRoute && !user && !loading && !isChecking) {
     return null; // Redirecionamento em andamento
   }
 
   return <>{children}</>;
 }
-
