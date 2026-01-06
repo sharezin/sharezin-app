@@ -56,7 +56,7 @@ export function usePullToRefresh({
       setPullDistance((currentDistance) => {
         if (currentDistance >= threshold && !isRefreshing) {
           setIsRefreshing(true);
-          onRefresh()
+          Promise.resolve(onRefresh())
             .then(() => {
               setIsRefreshing(false);
               setPullDistance(0);
