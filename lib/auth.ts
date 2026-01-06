@@ -56,7 +56,6 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
       name: userData.name,
     };
   } catch (error) {
-    console.error('Error getting auth user:', error);
     return null;
   }
 }

@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !user) {
-      console.error('Error creating user:', userError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao criar usuário' },
         { status: 500 }
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Register error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar registro' },
       { status: 500 }

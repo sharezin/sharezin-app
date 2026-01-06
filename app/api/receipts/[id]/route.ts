@@ -86,8 +86,7 @@ export async function GET(
         deletion_requests: deletionRequestsResult.data || [],
       },
     });
-  } catch (error) {
-    console.error('Error in GET /api/receipts/[id]:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -200,7 +199,6 @@ export async function PUT(
       .single();
 
     if (receiptError) {
-      console.error('Error updating receipt:', receiptError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao atualizar recibo' },
         { status: 500 }
@@ -245,10 +243,9 @@ export async function PUT(
             .insert(participantData);
 
           if (participantError) {
-            console.error('Error creating participant:', participantError);
             // Se o erro for de duplicação, tentar atualizar
             if (participantError.code === '23505') {
-              const { error: updateError } = await supabase
+              await supabase
                 .from('participants')
                 .update({
                   name: participant.name,
@@ -256,9 +253,6 @@ export async function PUT(
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', participant.id);
-              if (updateError) {
-                console.error('Error updating participant after duplicate:', updateError);
-              }
             }
           }
         } else {
@@ -280,14 +274,10 @@ export async function PUT(
             updateData.user_id = participant.id;
           }
 
-          const { error: participantError } = await supabase
+          await supabase
             .from('participants')
             .update(updateData)
             .eq('id', participant.id);
-
-          if (participantError) {
-            console.error('Error updating participant:', participantError);
-          }
         }
 
         // Garantir que o participante está associado ao recibo
@@ -358,8 +348,7 @@ export async function PUT(
           .single();
 
         if (!existingPending) {
-          // Inserir novo pendingParticipant
-          const { error: pendingError } = await supabase
+          await supabase
             .from('pending_participants')
             .insert({
               id: pending.id,
@@ -368,10 +357,8 @@ export async function PUT(
               user_id: pending.userId,
               requested_at: pending.requestedAt,
             });
-          if (pendingError) console.error('Error inserting pending participant:', pendingError);
         } else {
-          // Atualizar pendingParticipant existente
-          const { error: pendingError } = await supabase
+          await supabase
             .from('pending_participants')
             .update({
               name: pending.name,
@@ -379,15 +366,74 @@ export async function PUT(
               requested_at: pending.requestedAt,
             })
             .eq('id', pending.id);
-          if (pendingError) console.error('Error updating pending participant:', pendingError);
+        }
+      }
+    }
+
+    // Salvar deletionRequests se fornecidos
+    if (body.deletionRequests !== undefined && Array.isArray(body.deletionRequests)) {
+      // Remover deletionRequests que não estão mais na lista
+      const currentDeletionRequestIds = body.deletionRequests.map((dr: { id: string }) => dr.id);
+      const { data: existingDeletionRequests } = await supabase
+        .from('deletion_requests')
+        .select('id')
+        .eq('receipt_id', receiptId);
+
+      const deletionRequestsToRemove = (existingDeletionRequests || [])
+        .map((dr: { id: string }) => dr.id)
+        .filter((id: string) => !currentDeletionRequestIds.includes(id));
+
+      if (deletionRequestsToRemove.length > 0) {
+        await supabase
+          .from('deletion_requests')
+          .delete()
+          .eq('receipt_id', receiptId)
+          .in('id', deletionRequestsToRemove);
+      }
+
+      // Inserir ou atualizar deletionRequests
+      for (const deletionRequest of body.deletionRequests) {
+        const { data: existingDeletionRequest } = await supabase
+          .from('deletion_requests')
+          .select('id')
+          .eq('id', deletionRequest.id)
+          .single();
+
+        if (!existingDeletionRequest) {
+          // Verificar se o item existe antes de criar solicitação
+          const { data: itemExists } = await supabase
+            .from('receipt_items')
+            .select('id')
+            .eq('id', deletionRequest.itemId)
+            .eq('receipt_id', receiptId)
+            .single();
+
+          if (itemExists) {
+            await supabase
+              .from('deletion_requests')
+              .insert({
+                id: deletionRequest.id,
+                receipt_id: receiptId,
+                item_id: deletionRequest.itemId,
+                participant_id: deletionRequest.participantId,
+                requested_at: deletionRequest.requestedAt,
+              });
+          }
+        } else {
+          await supabase
+            .from('deletion_requests')
+            .update({
+              item_id: deletionRequest.itemId,
+              participant_id: deletionRequest.participantId,
+              requested_at: deletionRequest.requestedAt,
+            })
+            .eq('id', deletionRequest.id);
         }
       }
     }
 
     // Salvar itens se fornecidos
     if (body.items !== undefined && Array.isArray(body.items)) {
-      console.log('[API] Saving items:', body.items.length, 'items for receipt:', receiptId);
-      
       // Buscar itens existentes
       const { data: existingItems } = await supabase
         .from('receipt_items')
@@ -395,12 +441,11 @@ export async function PUT(
         .eq('receipt_id', receiptId);
 
       const existingItemIds = new Set((existingItems || []).map((item: { id: string }) => item.id));
-      const newItemIds = new Set(body.items.map((item: any) => item.id));
+      const newItemIds = new Set(body.items.map((item: { id: string }) => item.id));
 
       // Deletar itens que não estão mais na lista
       const itemsToDelete = Array.from(existingItemIds).filter(id => !newItemIds.has(id));
       if (itemsToDelete.length > 0) {
-        console.log('[API] Deleting items:', itemsToDelete);
         await supabase
           .from('receipt_items')
           .delete()
@@ -409,7 +454,7 @@ export async function PUT(
 
       // Inserir ou atualizar itens
       if (body.items.length > 0) {
-        const itemsToUpsert = body.items.map((item: any) => ({
+        const itemsToUpsert = body.items.map((item: { id: string; name: string; quantity: number; price: number; participantId: string; addedAt?: string }) => ({
           id: item.id,
           receipt_id: receiptId,
           name: item.name,
@@ -419,17 +464,19 @@ export async function PUT(
           added_at: item.addedAt || new Date().toISOString(),
         }));
 
-        console.log('[API] Upserting items:', itemsToUpsert.length);
-        const { data: insertedItems, error: itemsError } = await supabase
+        await supabase
           .from('receipt_items')
           .upsert(itemsToUpsert, { onConflict: 'id' })
           .select();
+      }
 
-        if (itemsError) {
-          console.error('[API] Error upserting items:', itemsError);
-        } else {
-          console.log('[API] Items upserted successfully:', insertedItems?.length);
-        }
+      // Remover automaticamente solicitações de exclusão cujos itens foram deletados
+      if (itemsToDelete.length > 0) {
+        await supabase
+          .from('deletion_requests')
+          .delete()
+          .eq('receipt_id', receiptId)
+          .in('item_id', itemsToDelete);
       }
     }
 
@@ -451,12 +498,11 @@ export async function PUT(
         ...updatedReceipt,
         items: itemsResult.data || [],
         participants: participants || [],
-        pendingParticipants: pendingParticipantsResult.data || [],
-        deletionRequests: deletionRequestsResult.data || [],
+        pending_participants: pendingParticipantsResult.data || [],
+        deletion_requests: deletionRequestsResult.data || [],
       },
     });
-  } catch (error) {
-    console.error('Error in PUT /api/receipts/[id]:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -499,7 +545,6 @@ export async function DELETE(
       .eq('id', receiptId);
 
     if (error) {
-      console.error('Error deleting receipt:', error);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao excluir recibo' },
         { status: 500 }
@@ -507,8 +552,7 @@ export async function DELETE(
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error('Error in DELETE /api/receipts/[id]:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

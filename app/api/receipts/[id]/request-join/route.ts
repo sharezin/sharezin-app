@@ -100,7 +100,6 @@ export async function POST(
       .single();
 
     if (pendingError || !pendingParticipant) {
-      console.error('Error creating pending participant:', pendingError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao criar solicitação de entrada' },
         { status: 500 }
@@ -115,7 +114,6 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error in POST /api/receipts/[id]/request-join:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

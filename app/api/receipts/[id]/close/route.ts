@@ -44,7 +44,6 @@ export async function POST(
       .single();
 
     if (error) {
-      console.error('Error closing receipt:', error);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao fechar recibo' },
         { status: 500 }
@@ -53,7 +52,6 @@ export async function POST(
 
     return NextResponse.json({ receipt: updatedReceipt });
   } catch (error) {
-    console.error('Error in POST /api/receipts/[id]/close:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

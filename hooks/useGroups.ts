@@ -17,7 +17,7 @@ export function useGroups() {
       const loadedGroups = getGroups();
       setGroups(loadedGroups);
     } catch (error) {
-      console.error('Erro ao carregar grupos:', error);
+      // Erro ao carregar grupos
     } finally {
       setLoading(false);
     }

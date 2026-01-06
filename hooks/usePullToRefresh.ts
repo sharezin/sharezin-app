@@ -61,8 +61,7 @@ export function usePullToRefresh({
               setIsRefreshing(false);
               setPullDistance(0);
             })
-            .catch((error) => {
-              console.error('Error refreshing:', error);
+            .catch(() => {
               setIsRefreshing(false);
               setPullDistance(0);
             });

@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar login' },
       { status: 500 }

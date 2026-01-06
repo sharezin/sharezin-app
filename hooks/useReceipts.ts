@@ -49,7 +49,6 @@ export function useReceipts() {
       setReceipts(transformedReceipts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar recibos';
-      console.error('Erro ao carregar recibos:', err);
       setError(errorMessage);
       // Em caso de erro de autenticação, limpa a lista
       if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
@@ -85,7 +84,6 @@ export function useReceipts() {
       return receipt;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar recibo';
-      console.error('Erro ao criar recibo:', err);
       setError(errorMessage);
       throw err;
     }
@@ -122,7 +120,6 @@ export function useReceipts() {
       return updatedReceipt;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar recibo';
-      console.error('Erro ao atualizar recibo:', err);
       setError(errorMessage);
       throw err;
     }
@@ -137,7 +134,6 @@ export function useReceipts() {
       await loadReceipts();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir recibo';
-      console.error('Erro ao excluir recibo:', err);
       setError(errorMessage);
       throw err;
     }
@@ -150,7 +146,6 @@ export function useReceipts() {
       return transformReceiptFromApi(response.receipt);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar recibo';
-      console.error('Erro ao buscar recibo:', err);
       setError(errorMessage);
       return null;
     }
@@ -173,7 +168,6 @@ export function useReceipts() {
       setReceipts(transformedReceipts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar recibos fechados';
-      console.error('Erro ao carregar recibos fechados:', err);
       setError(errorMessage);
       if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
         setReceipts([]);

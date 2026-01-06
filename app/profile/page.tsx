@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ConfirmModal } from '@/components/Modal';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
   const handleLogout = () => {
@@ -15,6 +17,10 @@ export default function ProfilePage() {
   const confirmLogout = () => {
     logout();
     setLogoutConfirm(false);
+  };
+
+  const handleChangePassword = () => {
+    router.push('/profile/change-password');
   };
 
   if (authLoading) {
@@ -66,6 +72,28 @@ export default function ProfilePage() {
                   ID: {user.id}
                 </p>
               </div>
+            </div>
+
+            <div className="pt-6 border-t border-zinc-200 dark:border-zinc-700">
+              <button
+                onClick={handleChangePassword}
+                className="w-full px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
+                </svg>
+                Trocar Senha
+              </button>
             </div>
 
             <div className="pt-6 border-t border-zinc-200 dark:border-zinc-700">

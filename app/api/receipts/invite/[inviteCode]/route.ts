@@ -48,7 +48,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error in GET /api/receipts/invite/[inviteCode]:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

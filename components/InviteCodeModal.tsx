@@ -19,7 +19,7 @@ export function InviteCodeModal({ isOpen, onClose, inviteCode, receiptTitle }: I
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Erro ao copiar:', err);
+      // Erro ao copiar - silencioso
     }
   };
 

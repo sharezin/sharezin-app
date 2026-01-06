@@ -10,6 +10,7 @@ import { ProductForm } from '@/components/ProductForm';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
 import { InviteCodeModal } from '@/components/InviteCodeModal';
 import { ParticipantReceiptModal } from '@/components/ParticipantReceiptModal';
+import { UserReceiptSummaryModal } from '@/components/UserReceiptSummaryModal';
 import { Receipt, ReceiptItem, Participant, DeletionRequest, PendingParticipant } from '@/types';
 import { formatCurrency, calculateItemTotal, calculateItemsTotal, calculateServiceChargeAmount } from '@/lib/calculations';
 import { jsPDF } from 'jspdf';
@@ -42,10 +43,14 @@ export default function ReceiptDetailPage() {
   });
   const [showMenu, setShowMenu] = useState(false);
   const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
+  const [showUserReceiptSummary, setShowUserReceiptSummary] = useState(false);
   const [closingReceipt, setClosingReceipt] = useState(false);
   const [closingParticipation, setClosingParticipation] = useState(false);
   const [acceptingParticipantId, setAcceptingParticipantId] = useState<string | null>(null);
   const [rejectingParticipantId, setRejectingParticipantId] = useState<string | null>(null);
+  const [requestingDeletionItemId, setRequestingDeletionItemId] = useState<string | null>(null);
+  const [approvingDeletionRequestId, setApprovingDeletionRequestId] = useState<string | null>(null);
+  const [rejectingDeletionRequestId, setRejectingDeletionRequestId] = useState<string | null>(null);
   const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
@@ -70,28 +75,13 @@ export default function ReceiptDetailPage() {
 
   const loadReceipt = async () => {
     const id = params.id as string;
-    console.log('[ReceiptDetail] loadReceipt called for id:', id);
-    console.log('[ReceiptDetail] Current user:', { id: user?.id, name: user?.name });
     const loadedReceipt = await getReceiptById(id);
     
     if (!loadedReceipt) {
-      console.log('[ReceiptDetail] Receipt not found, redirecting...');
       router.push('/');
       return;
     }
     
-    console.log('[ReceiptDetail] Receipt loaded successfully:', {
-      id: loadedReceipt.id,
-      itemsCount: loadedReceipt.items.length,
-      items: loadedReceipt.items.map(i => ({ 
-        id: i.id, 
-        name: i.name, 
-        participantId: i.participantId,
-        currentUserId: user?.id || '',
-        matches: i.participantId === (user?.id || '')
-      })),
-      currentUserId: user?.id || '',
-    });
     setReceipt(loadedReceipt);
     setLoading(false);
   };
@@ -232,6 +222,8 @@ export default function ReceiptDetailPage() {
       return;
     }
 
+    setRequestingDeletionItemId(itemId);
+
     const newRequest: DeletionRequest = {
       id: crypto.randomUUID(),
       itemId,
@@ -260,6 +252,8 @@ export default function ReceiptDetailPage() {
         message: 'Erro ao enviar solicitação. Tente novamente.',
         variant: 'error',
       });
+    } finally {
+      setRequestingDeletionItemId(null);
     }
   };
 
@@ -268,6 +262,8 @@ export default function ReceiptDetailPage() {
 
     const request = receipt.deletionRequests.find(req => req.id === requestId);
     if (!request) return;
+
+    setApprovingDeletionRequestId(requestId);
 
     // Remove o item e a solicitação
     const updatedReceipt: Receipt = {
@@ -286,11 +282,15 @@ export default function ReceiptDetailPage() {
         message: 'Erro ao aprovar exclusão. Tente novamente.',
         variant: 'error',
       });
+    } finally {
+      setApprovingDeletionRequestId(null);
     }
   };
 
   const handleRejectDeletion = async (requestId: string) => {
     if (!receipt || !isCreator) return;
+
+    setRejectingDeletionRequestId(requestId);
 
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -307,6 +307,8 @@ export default function ReceiptDetailPage() {
         message: 'Erro ao rejeitar exclusão. Tente novamente.',
         variant: 'error',
       });
+    } finally {
+      setRejectingDeletionRequestId(null);
     }
   };
 
@@ -738,9 +740,32 @@ export default function ReceiptDetailPage() {
                     <button
                       onClick={() => {
                         setShowMenu(false);
-                        setShowInviteCodeModal(true);
+                        setShowUserReceiptSummary(true);
                       }}
                       className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded-t-lg flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      Meus Gastos
+                    </button>
+                    <div className="border-t border-zinc-200 dark:border-zinc-700"></div>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setShowInviteCodeModal(true);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
                     >
                       <svg
                         className="w-4 h-4"
@@ -992,7 +1017,7 @@ export default function ReceiptDetailPage() {
                       const itemTotal = calculateItemTotal(item);
                       const deletionRequest = getDeletionRequest(item.id);
                       const isItemOwner = item.participantId === currentUserId;
-                      const canDelete = isCreator && !receipt.isClosed;
+                      const canDelete = isCreator && !receipt.isClosed && !deletionRequest;
                       const canRequestDeletion = isItemOwner && !isCreator && !deletionRequest && !receipt.isClosed;
                       
                       return (
@@ -1033,26 +1058,57 @@ export default function ReceiptDetailPage() {
                               {canRequestDeletion && (
                                 <button
                                   onClick={() => handleRequestDeletion(item.id)}
-                                  className="px-3 py-1 text-sm rounded text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                  disabled={requestingDeletionItemId === item.id}
+                                  className="px-3 py-1 text-sm rounded text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                  Solicitar Exclusão
+                                  {requestingDeletionItemId === item.id ? (
+                                    <>
+                                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      Enviando...
+                                    </>
+                                  ) : (
+                                    'Solicitar Exclusão'
+                                  )}
                                 </button>
                               )}
                               {deletionRequest && isCreator && (
-                                <div className="flex gap-1">
+                                <div className="flex gap-2">
                                   <button
                                     onClick={() => handleApproveDeletion(deletionRequest.id)}
-                                    className="px-2 py-1 text-xs rounded text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
-                                    title="Aprovar"
+                                    disabled={approvingDeletionRequestId !== null || rejectingDeletionRequestId !== null}
+                                    className="px-3 py-1 text-sm rounded-lg bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                   >
-                                    ✓
+                                    {approvingDeletionRequestId === deletionRequest.id ? (
+                                      <>
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Aceitando...
+                                      </>
+                                    ) : (
+                                      'Aceitar'
+                                    )}
                                   </button>
                                   <button
                                     onClick={() => handleRejectDeletion(deletionRequest.id)}
-                                    className="px-2 py-1 text-xs rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                    title="Rejeitar"
+                                    disabled={approvingDeletionRequestId !== null || rejectingDeletionRequestId !== null}
+                                    className="px-3 py-1 text-sm rounded-lg bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                   >
-                                    ✕
+                                    {rejectingDeletionRequestId === deletionRequest.id ? (
+                                      <>
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Recusando...
+                                      </>
+                                    ) : (
+                                      'Recusar'
+                                    )}
                                   </button>
                                 </div>
                               )}
@@ -1167,6 +1223,13 @@ export default function ReceiptDetailPage() {
             receipt={receipt}
             participantId={currentUserId}
             participantName={currentUserName}
+          />
+          <UserReceiptSummaryModal
+            isOpen={showUserReceiptSummary}
+            onClose={() => setShowUserReceiptSummary(false)}
+            receipt={receipt}
+            userId={currentUserId}
+            userName={currentUserName}
           />
         </>
       )}

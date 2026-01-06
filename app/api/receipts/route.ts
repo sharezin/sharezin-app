@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
     const { data: receipts, error } = await query;
 
     if (error) {
-      console.error('Error fetching receipts:', error);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao buscar recibos' },
         { status: 500 }
@@ -117,7 +116,6 @@ export async function GET(request: NextRequest) {
       total: receiptsWithData.length,
     });
   } catch (error) {
-    console.error('Error in GET /api/receipts:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -161,7 +159,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (receiptError || !receipt) {
-      console.error('Error creating receipt:', receiptError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao criar recibo' },
         { status: 500 }
@@ -198,7 +195,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error in POST /api/receipts:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
