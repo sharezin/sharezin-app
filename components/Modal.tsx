@@ -56,6 +56,8 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   confirmVariant?: 'danger' | 'primary' | 'warning';
+  loading?: boolean;
+  disabled?: boolean;
 }
 
 export function ConfirmModal({
@@ -67,25 +69,39 @@ export function ConfirmModal({
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
   confirmVariant = 'primary',
+  loading = false,
+  disabled = false,
 }: ConfirmModalProps) {
   const handleConfirm = () => {
-    onConfirm();
-    onClose();
+    if (!loading && !disabled) {
+      onConfirm();
+      if (!loading) {
+        onClose();
+      }
+    }
+  };
+
+  const handleClose = () => {
+    if (!loading && !disabled) {
+      onClose();
+    }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} showCloseButton={false}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={title} showCloseButton={false}>
       <p className="text-zinc-600 dark:text-zinc-400 mb-6">{message}</p>
       <div className="flex gap-3">
         <button
-          onClick={onClose}
-          className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          onClick={handleClose}
+          disabled={loading || disabled}
+          className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {cancelText}
         </button>
         <button
           onClick={handleConfirm}
-          className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+          disabled={loading || disabled}
+          className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
             confirmVariant === 'danger'
               ? 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600'
               : confirmVariant === 'warning'
@@ -93,6 +109,12 @@ export function ConfirmModal({
               : 'bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200'
           }`}
         >
+          {loading && (
+            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
           {confirmText}
         </button>
       </div>

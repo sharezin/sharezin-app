@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
+import { emailExists, hashPassword, createUser } from '@/lib/services/authService';
+import { generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,53 +25,24 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
 
     // Verificar se email já existe
-    const { data: existingUser } = await supabase
-      .from('sharezin_users')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (existingUser) {
+    if (await emailExists(supabase, email)) {
       return NextResponse.json(
         { error: 'Bad Request', message: 'Email já cadastrado' },
         { status: 400 }
       );
     }
 
-    // Hash da senha
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Criar usuário
-    const { data: user, error: userError } = await supabase
-      .from('sharezin_users')
-      .insert({
-        name,
-        email: email.toLowerCase(),
-        password_hash: passwordHash,
-      })
-      .select('id, name, email, created_at')
-      .single();
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Internal Server Error', message: 'Erro ao criar usuário' },
-        { status: 500 }
-      );
-    }
+    // Hash da senha e criar usuário
+    const passwordHash = await hashPassword(password);
+    const user = await createUser(supabase, name, email, passwordHash);
 
     // Gerar token JWT
-    const { generateToken } = await import('@/lib/auth');
     const token = generateToken(user.id, user.email);
 
     return NextResponse.json(
       {
         token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          createdAt: user.created_at,
-        },
+        user,
       },
       { status: 201 }
     );

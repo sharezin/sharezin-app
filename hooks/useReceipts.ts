@@ -2,26 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Receipt } from '@/types';
-import { apiRequest, transformToCamelCase } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 import { calculateReceiptTotal } from '@/lib/calculations';
-
-interface ApiReceipt {
-  id: string;
-  title: string;
-  date: string;
-  creator_id: string;
-  invite_code: string;
-  participants: any[];
-  pending_participants: any[];
-  items: any[];
-  deletion_requests: any[];
-  service_charge_percent: number;
-  cover: number;
-  total: number;
-  is_closed: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { transformReceiptFromApi, ApiReceipt } from '@/lib/transformers/receiptTransformer';
 
 export function useReceipts() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -177,6 +160,46 @@ export function useReceipts() {
     }
   }, []);
 
+  const removeParticipant = useCallback(async (receiptId: string, participantId: string): Promise<Receipt> => {
+    setError(null);
+    try {
+      const response = await apiRequest<{ receipt: ApiReceipt }>(
+        `/api/receipts/${receiptId}/participants/${participantId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      const updatedReceipt = transformReceiptFromApi(response.receipt);
+      await loadReceipts();
+      return updatedReceipt;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao remover participante';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [loadReceipts]);
+
+  const closeParticipantParticipation = useCallback(async (receiptId: string, participantId: string): Promise<Receipt> => {
+    setError(null);
+    try {
+      const response = await apiRequest<{ receipt: ApiReceipt }>(
+        `/api/receipts/${receiptId}/participants/${participantId}/close`,
+        {
+          method: 'POST',
+        }
+      );
+
+      const updatedReceipt = transformReceiptFromApi(response.receipt);
+      await loadReceipts();
+      return updatedReceipt;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao fechar participação';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [loadReceipts]);
+
   return {
     receipts,
     loading,
@@ -188,28 +211,8 @@ export function useReceipts() {
     refreshReceipts: loadReceipts,
     loadOpenReceipts,
     loadClosedReceipts,
+    removeParticipant,
+    closeParticipantParticipation,
   };
 }
 
-/**
- * Transforma um recibo da API (snake_case) para o formato do frontend (camelCase)
- */
-function transformReceiptFromApi(apiReceipt: ApiReceipt): Receipt {
-  return {
-    id: apiReceipt.id,
-    title: apiReceipt.title,
-    date: apiReceipt.date,
-    creatorId: apiReceipt.creator_id,
-    inviteCode: apiReceipt.invite_code,
-    participants: transformToCamelCase(apiReceipt.participants || []),
-    pendingParticipants: transformToCamelCase(apiReceipt.pending_participants || []),
-    items: transformToCamelCase(apiReceipt.items || []),
-    deletionRequests: transformToCamelCase(apiReceipt.deletion_requests || []),
-    serviceChargePercent: apiReceipt.service_charge_percent || 0,
-    cover: apiReceipt.cover || 0,
-    total: apiReceipt.total || 0,
-    isClosed: apiReceipt.is_closed || false,
-    createdAt: apiReceipt.created_at,
-    updatedAt: apiReceipt.updated_at,
-  };
-}

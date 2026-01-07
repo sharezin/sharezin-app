@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { apiRequest, transformToCamelCase } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 import { Receipt } from '@/types';
+import { transformReceiptFromApi, ApiReceipt } from '@/lib/transformers/receiptTransformer';
 import { AlertModal } from './Modal';
 
 interface SearchReceiptProps {
@@ -11,28 +12,11 @@ interface SearchReceiptProps {
   currentUserName: string;
 }
 
-interface ApiReceipt {
-  id: string;
-  title: string;
-  date: string;
-  creator_id: string;
-  invite_code: string;
-  participants: any[];
-  pending_participants: any[];
-  items: any[];
-  deletion_requests: any[];
-  service_charge_percent: number;
-  cover: number;
-  total: number;
-  is_closed: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export function SearchReceipt({ onClose, currentUserId, currentUserName }: SearchReceiptProps) {
   const [inviteCode, setInviteCode] = useState('');
   const [foundReceipt, setFoundReceipt] = useState<Receipt | null>(null);
   const [loading, setLoading] = useState(false);
+  const [requestingJoin, setRequestingJoin] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -45,25 +29,6 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
     variant: 'info',
   });
 
-  const transformReceiptFromApi = (apiReceipt: ApiReceipt): Receipt => {
-    return {
-      id: apiReceipt.id,
-      title: apiReceipt.title,
-      date: apiReceipt.date,
-      creatorId: apiReceipt.creator_id,
-      inviteCode: apiReceipt.invite_code,
-      participants: transformToCamelCase(apiReceipt.participants || []),
-      pendingParticipants: transformToCamelCase(apiReceipt.pending_participants || []),
-      items: transformToCamelCase(apiReceipt.items || []),
-      deletionRequests: transformToCamelCase(apiReceipt.deletion_requests || []),
-      serviceChargePercent: apiReceipt.service_charge_percent || 0,
-      cover: apiReceipt.cover || 0,
-      total: apiReceipt.total || 0,
-      isClosed: apiReceipt.is_closed || false,
-      createdAt: apiReceipt.created_at,
-      updatedAt: apiReceipt.updated_at,
-    };
-  };
 
   const handleSearch = async () => {
     if (!inviteCode.trim()) {
@@ -139,8 +104,9 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
   };
 
   const handleRequestJoin = async () => {
-    if (!foundReceipt) return;
+    if (!foundReceipt || requestingJoin) return;
 
+    setRequestingJoin(true);
     try {
       const response = await apiRequest<{ message: string; pendingParticipant: any }>(
         `/api/receipts/${foundReceipt.id}/request-join`,
@@ -172,6 +138,8 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
         message: errorMessage,
         variant: 'error',
       });
+    } finally {
+      setRequestingJoin(false);
     }
   };
 
@@ -254,9 +222,20 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
                 </button>
                 <button
                   onClick={handleRequestJoin}
-                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                  disabled={requestingJoin}
+                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Solicitar Entrada
+                  {requestingJoin ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Enviando...
+                    </>
+                  ) : (
+                    'Solicitar Entrada'
+                  )}
                 </button>
               </div>
             </div>

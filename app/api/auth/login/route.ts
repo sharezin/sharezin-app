@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
+import { findUserWithPassword, validatePassword } from '@/lib/services/authService';
+import { generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,13 +18,9 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
 
     // Buscar usuário pelo email
-    const { data: user, error: userError } = await supabase
-      .from('sharezin_users')
-      .select('id, name, email, password_hash')
-      .eq('email', email.toLowerCase())
-      .single();
+    const user = await findUserWithPassword(supabase, email);
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Credenciais inválidas' },
         { status: 401 }
@@ -31,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar senha
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    const isValidPassword = await validatePassword(password, user.password_hash);
     if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Credenciais inválidas' },
@@ -40,7 +37,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Gerar token JWT
-    const { generateToken } = await import('@/lib/auth');
     const token = generateToken(user.id, user.email);
 
     return NextResponse.json({

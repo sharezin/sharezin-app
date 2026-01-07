@@ -5,8 +5,14 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { formatCurrency } from '@/lib/calculations';
-import { SearchReceipt } from '@/components/SearchReceipt';
+import { ReceiptCard } from '@/components/ui/ReceiptCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import dynamic from 'next/dynamic';
+
+const DynamicSearchReceipt = dynamic(() => import('@/components/SearchReceipt').then(mod => ({ default: mod.SearchReceipt })), {
+  loading: () => null,
+  ssr: false,
+});
 
 export default function Home() {
   const router = useRouter();
@@ -150,10 +156,10 @@ export default function Home() {
         </div>
 
         {filteredReceipts.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mb-4">
+          <EmptyState
+            icon={
               <svg
-                className="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600"
+                className="h-16 w-16 text-zinc-400 dark:text-zinc-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -165,50 +171,20 @@ export default function Home() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-            </div>
-            <p className="text-zinc-600 dark:text-zinc-400 text-lg">
-              Nenhum recibo cadastrado ou participando
-            </p>
-            <p className="text-zinc-500 dark:text-zinc-500 text-sm mt-2">
-              Crie um novo recibo ou busque um recibo existente usando o código de convite
-            </p>
-          </div>
+            }
+            title="Nenhum recibo cadastrado ou participando"
+            description="Crie um novo recibo ou busque um recibo existente usando o código de convite"
+          />
         ) : (
           <div className="space-y-3">
             {filteredReceipts
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
               .map(receipt => (
-                <div
+                <ReceiptCard
                   key={receipt.id}
-                  className="relative"
-                >
-                  <a
-                    href={`/receipt/${receipt.id}`}
-                    className="block p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-black dark:text-zinc-50 mb-1">
-                          {receipt.title}
-                        </h3>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                          {new Date(receipt.date).toLocaleDateString('pt-BR')}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="text-zinc-600 dark:text-zinc-400">
-                            {receipt.participants.length} participante{receipt.participants.length !== 1 ? 's' : ''}
-                          </span>
-                          <span className="text-zinc-600 dark:text-zinc-400">
-                            {receipt.items.length} item{receipt.items.length !== 1 ? 's' : ''}
-                          </span>
-                          <span className="font-semibold text-black dark:text-zinc-50">
-                            {formatCurrency(receipt.total)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </div>
+                  receipt={receipt}
+                  href={`/receipt/${receipt.id}`}
+                />
               ))}
           </div>
         )}
@@ -216,7 +192,7 @@ export default function Home() {
 
 
       {showSearch && (
-        <SearchReceipt
+        <DynamicSearchReceipt
           onClose={() => setShowSearch(false)}
           currentUserId={currentUserId}
           currentUserName={currentUserName}

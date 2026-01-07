@@ -4,8 +4,9 @@ import { useEffect, useRef } from 'react';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
+import { ReceiptCard } from '@/components/ui/ReceiptCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function HistoryPage() {
   const { receipts, loading, loadClosedReceipts } = useReceipts();
@@ -121,10 +122,10 @@ export default function HistoryPage() {
         </div>
 
         {closedReceipts.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mb-4">
+          <EmptyState
+            icon={
               <svg
-                className="mx-auto h-16 w-16 text-zinc-400 dark:text-zinc-600"
+                className="h-16 w-16 text-zinc-400 dark:text-zinc-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -136,11 +137,9 @@ export default function HistoryPage() {
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-            </div>
-            <p className="text-zinc-600 dark:text-zinc-400 text-lg">
-              Nenhum recibo no histórico
-            </p>
-          </div>
+            }
+            title="Nenhum recibo no histórico"
+          />
         ) : (
           <div className="space-y-6">
             {sortedDates.map(date => (
@@ -152,30 +151,11 @@ export default function HistoryPage() {
                   {groupedByDate[date]
                     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                     .map(receipt => (
-                      <Link
+                      <ReceiptCard
                         key={receipt.id}
+                        receipt={receipt}
                         href={`/receipt/${receipt.id}`}
-                        className="block p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-black dark:text-zinc-50 mb-1">
-                              {receipt.title}
-                            </h3>
-                            <div className="flex items-center gap-4 text-sm mt-2">
-                              <span className="text-zinc-600 dark:text-zinc-400">
-                                {receipt.participants.length} participante{receipt.participants.length !== 1 ? 's' : ''}
-                              </span>
-                              <span className="text-zinc-600 dark:text-zinc-400">
-                                {receipt.items.length} item{receipt.items.length !== 1 ? 's' : ''}
-                              </span>
-                              <span className="font-semibold text-black dark:text-zinc-50">
-                                {formatCurrency(receipt.total)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
+                      />
                     ))}
                 </div>
               </div>
