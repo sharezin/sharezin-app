@@ -91,8 +91,32 @@ export async function POST(
     }
 
     // Buscar recibo atualizado
+    const { data: updatedReceiptData, error: receiptError } = await supabase
+      .from('receipts')
+      .select('*')
+      .eq('id', receiptId)
+      .single();
+
+    if (receiptError || !updatedReceiptData) {
+      return NextResponse.json(
+        { error: 'Internal Server Error', message: 'Erro ao buscar recibo atualizado' },
+        { status: 500 }
+      );
+    }
+
+    // Buscar dados relacionados
     const receiptData = await fetchReceiptData(supabase, receiptId);
-    const updatedReceipt = transformReceiptFromApi(receiptData);
+
+    // Combinar recibo com dados relacionados
+    const fullReceipt = {
+      ...updatedReceiptData,
+      items: receiptData.items,
+      participants: receiptData.participants,
+      pending_participants: receiptData.pendingParticipants,
+      deletion_requests: receiptData.deletionRequests,
+    };
+
+    const updatedReceipt = transformReceiptFromApi(fullReceipt);
 
     return NextResponse.json({ receipt: updatedReceipt });
   } catch (error) {
