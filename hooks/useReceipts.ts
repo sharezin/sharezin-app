@@ -209,6 +209,7 @@ export function useReceipts() {
     removeReceipt,
     getReceiptById,
     refreshReceipts: loadReceipts,
+    loadReceipts, // Exporta diretamente para permitir passar parâmetros
     loadOpenReceipts,
     loadClosedReceipts,
     removeParticipant,

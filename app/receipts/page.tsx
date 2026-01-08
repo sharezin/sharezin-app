@@ -1,0 +1,287 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useReceiptsContext } from '@/contexts/ReceiptsContext';
+import { useAuth } from '@/hooks/useAuth';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { ReceiptCard } from '@/components/ui/ReceiptCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Receipt } from '@/types';
+import dynamic from 'next/dynamic';
+
+const DynamicSearchReceipt = dynamic(() => import('@/components/SearchReceipt').then(mod => ({ default: mod.SearchReceipt })), {
+  loading: () => null,
+  ssr: false,
+});
+
+type FilterType = 'open' | 'closed';
+
+export default function ReceiptsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { receipts, loading, loadReceipts } = useReceiptsContext();
+  const { user } = useAuth();
+  const [showSearch, setShowSearch] = useState(false);
+  const [filter, setFilter] = useState<FilterType>('open');
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedRef = useRef(false);
+  
+  // ID e nome do usuário atual
+  const currentUserId = user?.id || '';
+  const currentUserName = user?.name || 'Usuário';
+
+  // Lê filtro da URL se existir
+  useEffect(() => {
+    const urlFilter = searchParams?.get('filter');
+    if (urlFilter === 'closed' || urlFilter === 'open') {
+      setFilter(urlFilter);
+    }
+  }, [searchParams]);
+
+  // Pull-to-refresh para atualizar recibos
+  const { isRefreshing, pullDistance, pullProgress } = usePullToRefresh({
+    onRefresh: async () => {
+      if (user?.id) {
+        await loadReceipts(true); // Carrega todos os recibos incluindo fechados
+      }
+    },
+    enabled: !!user?.id && !loading,
+  });
+
+  // Carrega recibos apenas se ainda não foram carregados (compartilhado com home)
+  // Se já foram carregados na home, apenas usa os dados do contexto
+  useEffect(() => {
+    if (user?.id && pathname === '/receipts' && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      setHasLoaded(false);
+      // Só carrega se não houver recibos no contexto (não foram carregados na home)
+      if (receipts.length === 0) {
+        loadReceipts(true).then(() => {
+          setHasLoaded(true);
+        }); // Carrega todos os recibos incluindo fechados
+      } else {
+        setHasLoaded(true);
+      }
+    }
+  }, [user?.id, pathname, loadReceipts, receipts.length]);
+
+  // Reset flag quando mudar de página ou usuário
+  useEffect(() => {
+    if (pathname !== '/receipts' || !user?.id) {
+      hasLoadedRef.current = false;
+      setHasLoaded(false);
+    }
+  }, [pathname, user?.id]);
+
+  // Recarrega recibos quando a página volta a ficar visível (navegação de volta)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id && pathname === '/receipts') {
+        loadReceipts(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.id, pathname, loadReceipts]);
+
+  // Filtra recibos baseado no filtro selecionado
+  const filteredReceipts = receipts.filter((receipt: Receipt) => {
+    if (filter === 'open') {
+      return !receipt.isClosed;
+    }
+    return receipt.isClosed; // 'closed'
+  });
+
+  const handleCreateReceipt = () => {
+    router.push('/receipt/new');
+  };
+
+  const handleFilterChange = (newFilter: FilterType) => {
+    setFilter(newFilter);
+    // Atualiza URL sem recarregar página
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set('filter', newFilter);
+    router.replace(`/receipts?${params.toString()}`, { scroll: false });
+  };
+
+  if (loading && !hasLoaded) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <p className="text-text-secondary">Carregando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-bg pb-20 relative">
+      {/* Indicador de pull-to-refresh */}
+      {pullDistance > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 transition-opacity duration-200"
+          style={{
+            transform: `translateY(${Math.min(pullDistance, 80)}px)`,
+            opacity: Math.min(pullProgress, 1),
+          }}
+        >
+          <div className="bg-surface-alt text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
+            {isRefreshing ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-sm font-medium">Atualizando...</span>
+              </>
+            ) : (
+              <>
+                <svg 
+                  className="h-5 w-5 transition-transform duration-200" 
+                  style={{ transform: `rotate(${pullProgress * 180}deg)` }}
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+                <span className="text-sm font-medium">
+                  {pullProgress >= 1 ? 'Solte para atualizar' : 'Puxe para atualizar'}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-text-primary">
+              Recibos
+            </h1>
+            <button
+              onClick={() => setShowSearch(true)}
+              className="p-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
+              aria-label="Buscar recibo"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Filtros */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleFilterChange('open')}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'open'
+                  ? 'bg-primary text-text-inverse'
+                  : 'bg-surface border border-border text-text-primary hover:bg-secondary-hover'
+              }`}
+            >
+              Abertos
+            </button>
+            <button
+              onClick={() => handleFilterChange('closed')}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'closed'
+                  ? 'bg-primary text-text-inverse'
+                  : 'bg-surface border border-border text-text-primary hover:bg-secondary-hover'
+              }`}
+            >
+              Fechados
+            </button>
+          </div>
+        </div>
+
+        {filteredReceipts.length === 0 ? (
+          <EmptyState
+            icon={
+              <svg
+                className="h-16 w-16 text-text-muted"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            }
+            title={
+              filter === 'closed'
+                ? 'Nenhum recibo fechado'
+                : 'Nenhum recibo aberto'
+            }
+            description={
+              filter === 'closed'
+                ? 'Você ainda não possui recibos fechados'
+                : 'Crie um novo recibo ou busque um recibo existente usando o código de convite'
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredReceipts
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+              .map(receipt => (
+                <ReceiptCard
+                  key={receipt.id}
+                  receipt={receipt}
+                  href={`/receipt/${receipt.id}`}
+                />
+              ))}
+          </div>
+        )}
+      </div>
+
+      {showSearch && (
+        <DynamicSearchReceipt
+          onClose={() => setShowSearch(false)}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      <button
+        onClick={handleCreateReceipt}
+        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center z-[60]"
+        aria-label="Criar novo recibo"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}

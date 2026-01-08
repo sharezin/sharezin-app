@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Receipt, Participant, ReceiptItem } from '@/types';
 import { ParticipantList } from './ParticipantList';
 import { ItemList } from './ItemList';
@@ -19,11 +19,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
   const [participants, setParticipants] = useState<Participant[]>(receipt.participants);
   const [items, setItems] = useState<ReceiptItem[]>(receipt.items);
 
-  useEffect(() => {
-    handleSave();
-  }, [participants, items, serviceCharge, cover, title]);
-
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const updatedReceipt: Receipt = {
       ...receipt,
       title,
@@ -33,7 +29,11 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
       cover: parseFloat(cover.replace(',', '.')) || 0,
     };
     onSave(updatedReceipt);
-  };
+  }, [receipt, title, participants, items, serviceCharge, cover, onSave]);
+
+  useEffect(() => {
+    handleSave();
+  }, [handleSave]);
 
   const handleAddParticipant = (participant: Participant) => {
     // Verifica se já existe

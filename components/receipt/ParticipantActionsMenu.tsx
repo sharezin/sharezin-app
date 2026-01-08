@@ -31,23 +31,18 @@ export function ParticipantActionsMenu({
   const buttonRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Não mostrar menu se for o próprio criador
-  if (isCreator) {
-    return null;
-  }
-
   useEffect(() => {
-    if (showMenu && buttonRef.current) {
+    if (showMenu && buttonRef.current && !isCreator) {
       const rect = buttonRef.current.getBoundingClientRect();
       setMenuPosition({
         top: rect.bottom + 8,
         right: window.innerWidth - rect.right,
       });
     }
-  }, [showMenu]);
+  }, [showMenu, isCreator]);
 
   useEffect(() => {
-    if (showMenu && !closingParticipation && !removingParticipant) {
+    if (showMenu && !closingParticipation && !removingParticipant && !isCreator) {
       const handleScroll = () => setShowMenu(false);
       const handleResize = () => setShowMenu(false);
       
@@ -59,7 +54,12 @@ export function ParticipantActionsMenu({
         window.removeEventListener('resize', handleResize);
       };
     }
-  }, [showMenu, closingParticipation, removingParticipant]);
+  }, [showMenu, closingParticipation, removingParticipant, isCreator]);
+
+  // Não mostrar menu se for o próprio criador
+  if (isCreator) {
+    return null;
+  }
 
   return (
     <div className="relative" ref={buttonRef}>
