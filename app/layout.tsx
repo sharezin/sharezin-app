@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "Sharezin - Divisão de Recibos",
   description: "Gerencie recibos compartilhados e calcule quanto cada pessoa deve pagar",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

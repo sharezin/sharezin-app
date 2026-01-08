@@ -61,9 +61,6 @@ export default function ProfilePage() {
               <p className="text-sm text-text-secondary">
                 {user.email}
               </p>
-              <p className="text-xs text-text-muted mt-1">
-                ID: {user.id}
-              </p>
             </div>
 
             <div className="pt-6 border-t border-border-strong space-y-4">
