@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Otimiza o build para evitar múltiplas compilações
-  output: 'standalone',
-  
   // Configurações experimentais para melhorar o build
   experimental: {
     // Otimiza a compilação de rotas
