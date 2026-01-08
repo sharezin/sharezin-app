@@ -150,18 +150,18 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
         style={{ zIndex: 9999, position: 'fixed' }}
       >
         <div
-          className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
+          className="w-full max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
           onClick={(e) => e.stopPropagation()}
           style={{ position: 'relative', zIndex: 10000 }}
         >
-          <h2 className="text-xl font-semibold mb-4 text-black dark:text-zinc-50">
+          <h2 className="text-xl font-semibold mb-4 text-text-primary">
             Buscar Recibo
           </h2>
 
           {!foundReceipt ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Código de Convite
                 </label>
                 <input
@@ -175,7 +175,7 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
                   autoFocus
                   maxLength={6}
                   disabled={loading}
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-center text-2xl font-bold tracking-wider uppercase disabled:opacity-50"
+                  className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary text-center text-2xl font-bold tracking-wider uppercase disabled:opacity-50"
                 />
               </div>
 
@@ -183,14 +183,14 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
                 <button
                   onClick={onClose}
                   disabled={loading}
-                  className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSearch}
                   disabled={loading || !inviteCode.trim()}
-                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Buscando...' : 'Buscar'}
                 </button>
@@ -198,14 +198,14 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <p className="text-green-600 dark:text-green-400 font-medium mb-2">
+              <div className="p-4 bg-success/10 rounded-lg border border-success/30">
+                <p className="text-success font-medium mb-2">
                   Recibo encontrado!
                 </p>
-                <p className="text-black dark:text-zinc-50 font-semibold">
+                <p className="text-text-primary font-semibold">
                   {foundReceipt.title}
                 </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-text-secondary mt-1">
                   Criado em {new Date(foundReceipt.date).toLocaleDateString('pt-BR')}
                 </p>
               </div>
@@ -216,14 +216,14 @@ export function SearchReceipt({ onClose, currentUserId, currentUserName }: Searc
                     setFoundReceipt(null);
                     setInviteCode('');
                   }}
-                  className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
                 >
                   Voltar
                 </button>
                 <button
                   onClick={handleRequestJoin}
                   disabled={requestingJoin}
-                  className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {requestingJoin ? (
                     <>

@@ -58,13 +58,13 @@ export function ReceiptActionsMenu({
             className="fixed inset-0 z-40"
             onClick={() => setShowMenu(false)}
           />
-          <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-50">
+          <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-lg border border-border-strong shadow-lg z-50">
             <button
               onClick={() => {
                 setShowMenu(false);
                 onShowUserReceiptSummary();
               }}
-              className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded-t-lg flex items-center gap-2"
+              className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors rounded-t-lg flex items-center gap-2"
             >
               <svg
                 className="w-4 h-4"
@@ -81,13 +81,13 @@ export function ReceiptActionsMenu({
               </svg>
               Meus Gastos
             </button>
-            <div className="border-t border-zinc-200 dark:border-zinc-700"></div>
+            <div className="border-t border-border-strong"></div>
             <button
               onClick={() => {
                 setShowMenu(false);
                 onShowInviteCode();
               }}
-              className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+              className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors flex items-center gap-2"
             >
               <svg
                 className="w-4 h-4"
@@ -104,7 +104,7 @@ export function ReceiptActionsMenu({
               </svg>
               Ver Código de Convite
             </button>
-            <div className="border-t border-zinc-200 dark:border-zinc-700"></div>
+            <div className="border-t border-border-strong"></div>
             {isCreator ? (
               <button
                 onClick={() => {
@@ -112,7 +112,7 @@ export function ReceiptActionsMenu({
                   onCloseReceipt();
                 }}
                 disabled={receipt.isClosed || closingReceipt}
-                className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
+                className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
               >
                 {closingReceipt ? (
                   <>
@@ -135,7 +135,7 @@ export function ReceiptActionsMenu({
                   onCloseParticipation();
                 }}
                 disabled={receipt.isClosed || isParticipantClosed || closingParticipation}
-                className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
+                className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
               >
                 {closingParticipation ? (
                   <>

@@ -160,7 +160,7 @@ export function ParticipantReceiptModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 dark:bg-black rounded-lg p-6 mx-4 shadow-2xl"
+        className="w-full max-w-md bg-surface-alt rounded-lg p-6 mx-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -296,7 +296,7 @@ export function ParticipantReceiptModal({
         <div className="flex gap-3 mt-6">
           <button
             onClick={generatePDF}
-            className="flex-1 px-4 py-3 rounded-lg bg-zinc-800 dark:bg-zinc-700 text-white font-medium hover:bg-zinc-700 dark:hover:bg-zinc-600 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 rounded-lg bg-surface-alt text-white font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -315,7 +315,7 @@ export function ParticipantReceiptModal({
           </button>
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-lg bg-white dark:bg-zinc-800 text-black dark:text-white font-medium hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            className="flex-1 px-4 py-3 rounded-lg bg-surface text-text-primary font-medium hover:bg-secondary-hover transition-colors"
           >
             Fechar
           </button>

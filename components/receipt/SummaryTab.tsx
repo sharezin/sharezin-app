@@ -27,7 +27,7 @@ export function SummaryTab({
 }: SummaryTabProps) {
   if (receipt.participants.length === 0) {
     return (
-      <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+      <p className="text-text-muted text-sm">
         Nenhum participante ainda.
       </p>
     );
@@ -47,29 +47,29 @@ export function SummaryTab({
               key={participant.id}
               className={`flex items-center justify-between p-3 rounded-lg relative ${
                 participant.isClosed
-                  ? 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700'
-                  : 'bg-zinc-50 dark:bg-zinc-800'
+                  ? 'bg-secondary-soft border border-border-strong'
+                  : 'bg-secondary-soft'
               }`}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className={`font-medium text-black dark:text-zinc-50 truncate ${
+                <span className={`font-medium text-text-primary truncate ${
                   participant.isClosed ? 'line-through opacity-60' : ''
                 }`}>
                   {participant.name || 'Sem nome'}
                 </span>
                 {participant.isClosed && (
-                  <span className="text-xs px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 rounded">
+                  <span className="text-xs px-2 py-0.5 bg-secondary text-text-secondary rounded">
                     Fechado
                   </span>
                 )}
                 {isParticipantCreator && (
-                  <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
+                  <span className="text-xs px-2 py-0.5 bg-info/20 text-info rounded">
                     Criador
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-lg font-semibold text-black dark:text-zinc-50">
+                <span className="text-lg font-semibold text-text-primary">
                   {formatCurrency(total)}
                 </span>
                 {isCreator && !isCurrentUser && (

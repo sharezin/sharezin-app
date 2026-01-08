@@ -3,15 +3,107 @@
 @tailwind utilities;
 
 :root {
+  /* Legacy variables */
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Primary Colors */
+  --color-primary: #000000;
+  --color-primary-hover: #27272a;
+  --color-primary-soft: #f4f4f5;
+
+  /* Secondary Colors */
+  --color-secondary: #d4d4d8;
+  --color-secondary-hover: #f4f4f5;
+  --color-secondary-soft: #fafafa;
+
+  /* Backgrounds */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-alt: #27272a;
+
+  /* Text Colors */
+  --color-text-primary: #000000;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #71717a;
+  --color-text-inverse: #ffffff;
+
+  /* State Colors */
+  --color-success: #16a34a;
+  --color-warning: #ca8a04;
+  --color-error: #dc2626;
+  --color-info: #2563eb;
+
+  /* Borders */
+  --color-border: #d4d4d8;
+  --color-border-strong: #e4e4e7;
+
+  /* Tertiary (Gray Button) */
+  --color-tertiary: #e5e7eb;
+  --color-tertiary-hover: #d1d5db;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+[data-theme="dark"] {
+  /* Legacy variables */
     --background: #0a0a0a;
     --foreground: #ededed;
-  }
+
+  /* Primary Colors */
+  --color-primary: #ffffff;
+  --color-primary-hover: #e4e4e7;
+  --color-primary-soft: #27272a;
+
+  /* Secondary Colors */
+  --color-secondary: #52525b;
+  --color-secondary-hover: #27272a;
+  --color-secondary-soft: #18181b;
+
+  /* Backgrounds */
+  --color-bg: #000000;
+  --color-surface: #18181b;
+  --color-surface-alt: #27272a;
+
+  /* Text Colors */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  --color-text-inverse: #000000;
+
+  /* State Colors */
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Borders */
+  --color-border: #52525b;
+  --color-border-strong: #3f3f46;
+
+  /* Tertiary (Gray Button) */
+  --color-tertiary: #374151;
+  --color-tertiary-hover: #4b5563;
+
+  /* Shadows (lighter for dark mode) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 }
 
 body {

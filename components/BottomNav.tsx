@@ -61,7 +61,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border-strong z-50">
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
@@ -72,11 +72,11 @@ export function BottomNav() {
                 href={item.href}
                 className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
                   active
-                    ? 'text-black dark:text-zinc-50'
-                    : 'text-zinc-500 dark:text-zinc-400'
+                    ? 'text-text-primary'
+                    : 'text-text-muted'
                 }`}
               >
-                <div className={active ? 'text-black dark:text-zinc-50' : ''}>
+                <div className={active ? 'text-text-primary' : ''}>
                   {item.icon}
                 </div>
                 <span className={`text-xs mt-1 ${active ? 'font-medium' : ''}`}>

@@ -23,13 +23,13 @@ export function GroupSelector({ onSelectParticipants, onClose }: GroupSelectorPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:justify-center">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4 text-black dark:text-zinc-50">
+      <div className="w-full max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <h2 className="text-xl font-semibold mb-4 text-text-primary">
           Selecionar Grupo
         </h2>
         
         {groups.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+          <p className="text-text-secondary mb-4">
             Nenhum grupo cadastrado ainda.
           </p>
         ) : (
@@ -37,7 +37,7 @@ export function GroupSelector({ onSelectParticipants, onClose }: GroupSelectorPr
             {groups.map(group => (
               <label
                 key={group.id}
-                className="flex items-center p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                className="flex items-center p-3 rounded-lg border border-border-strong cursor-pointer hover:bg-secondary-hover"
               >
                 <input
                   type="radio"
@@ -47,7 +47,7 @@ export function GroupSelector({ onSelectParticipants, onClose }: GroupSelectorPr
                   onChange={(e) => setSelectedGroupId(e.target.value)}
                   className="mr-3 w-4 h-4"
                 />
-                <span className="text-black dark:text-zinc-50">{group.name}</span>
+                <span className="text-text-primary">{group.name}</span>
               </label>
             ))}
           </div>
@@ -56,7 +56,7 @@ export function GroupSelector({ onSelectParticipants, onClose }: GroupSelectorPr
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
           >
             Cancelar
           </button>
@@ -64,7 +64,7 @@ export function GroupSelector({ onSelectParticipants, onClose }: GroupSelectorPr
             <button
               onClick={handleSelectGroup}
               disabled={!selectedGroupId}
-              className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+              className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
             >
               Adicionar
             </button>

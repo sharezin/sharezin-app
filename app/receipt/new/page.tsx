@@ -81,23 +81,23 @@ export default function NewReceiptPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+    <div className="min-h-screen bg-bg">
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <BackButton />
             <div className="flex-1">
-              <h1 className="text-xl font-bold text-black dark:text-zinc-50">
+              <h1 className="text-xl font-bold text-text-primary">
                 Novo Recibo
               </h1>
             </div>
           </div>
-          <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+          <p className="text-text-secondary text-sm">
             Crie um novo recibo compartilhado
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 space-y-6">
+        <div className="bg-surface rounded-lg p-6 space-y-6">
           <Input
             label="Nome do Recibo *"
             value={title}
@@ -107,13 +107,13 @@ export default function NewReceiptPage() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Adicionar Grupo (Opcional)
             </label>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+              className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Nenhum grupo selecionado</option>
               {groups.map(group => (
@@ -122,7 +122,7 @@ export default function NewReceiptPage() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs text-text-muted mt-1">
               Selecione um grupo para adicionar seus participantes automaticamente
             </p>
           </div>

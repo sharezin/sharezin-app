@@ -3,7 +3,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'warning';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'danger' | 'warning';
   loading?: boolean;
   children: ReactNode;
 }
@@ -19,10 +19,11 @@ export function Button({
   const baseStyles = 'px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2';
   
   const variantStyles = {
-    primary: 'bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200',
-    secondary: 'border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    danger: 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600',
-    warning: 'bg-yellow-600 dark:bg-yellow-500 text-white hover:bg-yellow-700 dark:hover:bg-yellow-600',
+    primary: 'bg-primary text-text-inverse hover:bg-primary-hover',
+    secondary: 'border border-border text-text-primary hover:bg-secondary-hover',
+    tertiary: 'bg-tertiary text-text-primary hover:bg-tertiary-hover',
+    danger: 'bg-error text-text-inverse hover:opacity-90',
+    warning: 'bg-warning text-text-inverse hover:opacity-90',
   };
 
   return (

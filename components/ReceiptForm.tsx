@@ -63,14 +63,14 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
   return (
     <div className="space-y-6 pb-6">
       <div>
-        <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+        <label className="block text-sm font-medium text-text-primary mb-2">
           Título do Recibo
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+          className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="Ex: Jantar no restaurante X"
         />
       </div>
@@ -91,7 +91,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+          <label className="block text-sm font-medium text-text-primary mb-2">
             Taxa do Garçom
           </label>
           <input
@@ -99,11 +99,11 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
             value={serviceCharge}
             onChange={(e) => setServiceCharge(e.target.value.replace(/[^0-9,.]/g, ''))}
             placeholder="0,00"
-            className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+          <label className="block text-sm font-medium text-text-primary mb-2">
             Cover
           </label>
           <input
@@ -111,7 +111,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
             value={cover}
             onChange={(e) => setCover(e.target.value.replace(/[^0-9,.]/g, ''))}
             placeholder="0,00"
-            className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
       </div>
@@ -130,7 +130,7 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
       {onCancel && (
         <button
           onClick={onCancel}
-          className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          className="w-full px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
         >
           Cancelar
         </button>

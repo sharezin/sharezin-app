@@ -21,8 +21,8 @@ export function PendingParticipantsList({
   if (pendingParticipants.length === 0) return null;
 
   return (
-    <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6 mb-6 border border-yellow-200 dark:border-yinc-800">
-      <h3 className="text-lg font-semibold text-black dark:text-zinc-50 mb-4">
+    <div className="bg-warning/10 rounded-lg p-6 mb-6 border border-warning/30">
+      <h3 className="text-lg font-semibold text-text-primary mb-4">
         Participantes Pendentes ({pendingParticipants.length})
       </h3>
       <div className="space-y-3">
@@ -33,13 +33,13 @@ export function PendingParticipantsList({
           return (
             <div
               key={pending.id}
-              className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-lg"
+              className="flex items-center justify-between p-3 bg-surface rounded-lg"
             >
               <div className="flex-1">
-                <p className="font-medium text-black dark:text-zinc-50">
+                <p className="font-medium text-text-primary">
                   {pending.name}
                 </p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-text-muted">
                   Solicitado em {new Date(pending.requestedAt).toLocaleString('pt-BR')}
                 </p>
               </div>

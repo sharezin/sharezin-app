@@ -15,8 +15,8 @@ export function IconButton({
 }: IconButtonProps) {
   const baseStyles = 'p-2 rounded-lg transition-colors';
   const variantStyles = {
-    default: 'border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    ghost: 'text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800',
+    default: 'border border-border text-text-primary hover:bg-secondary-hover',
+    ghost: 'text-text-primary hover:bg-secondary-hover',
   };
 
   return (

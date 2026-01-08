@@ -35,7 +35,7 @@ export function ItemHistoryTab({
 }: ItemHistoryTabProps) {
   if (items.length === 0) {
     return (
-      <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+      <p className="text-text-muted text-sm">
         Nenhum produto adicionado ainda.
       </p>
     );
@@ -55,23 +55,23 @@ export function ItemHistoryTab({
             key={item.id}
             className={`p-4 rounded-lg ${
               deletionRequest
-                ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-                : 'bg-zinc-50 dark:bg-zinc-800'
+                ? 'bg-warning/10 border border-warning/30'
+                : 'bg-secondary-soft'
             }`}
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
-                <p className="font-medium text-black dark:text-zinc-50">
+                <p className="font-medium text-text-primary">
                   {item.name}
                 </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-text-secondary">
                   {item.quantity}x {formatCurrency(item.price)} = {formatCurrency(itemTotal)}
                 </p>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                <p className="text-xs text-text-muted mt-1">
                   {new Date(item.addedAt).toLocaleString('pt-BR')}
                 </p>
                 {deletionRequest && (
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2 font-medium">
+                  <p className="text-xs text-warning mt-2 font-medium">
                     ⚠️ Solicitação de exclusão pendente
                   </p>
                 )}
@@ -80,7 +80,7 @@ export function ItemHistoryTab({
                 {canDelete && (
                   <button
                     onClick={() => onRemoveItem(item.id)}
-                    className="px-3 py-1 text-sm rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    className="px-3 py-1 text-sm rounded text-error bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                   >
                     Excluir
                   </button>

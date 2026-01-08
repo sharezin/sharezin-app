@@ -20,19 +20,19 @@ export function Modal({ isOpen, onClose, title, children, showCloseButton = true
       style={{ zIndex: 9999, position: 'fixed' }}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="w-full max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ position: 'relative', zIndex: 10000 }}
       >
         {title && (
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
+            <h2 className="text-xl font-semibold text-text-primary">
               {title}
             </h2>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-50 transition-colors"
+                className="text-text-muted hover:text-text-primary transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -89,12 +89,12 @@ export function ConfirmModal({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={title} showCloseButton={false}>
-      <p className="text-zinc-600 dark:text-zinc-400 mb-6">{message}</p>
+      <p className="text-text-secondary mb-6">{message}</p>
       <div className="flex gap-3">
         <button
           onClick={handleClose}
           disabled={loading || disabled}
-          className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {cancelText}
         </button>
@@ -103,10 +103,10 @@ export function ConfirmModal({
           disabled={loading || disabled}
           className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
             confirmVariant === 'danger'
-              ? 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600'
+              ? 'bg-error text-text-inverse hover:opacity-90'
               : confirmVariant === 'warning'
-              ? 'bg-yellow-600 dark:bg-yellow-500 text-white hover:bg-yellow-700 dark:hover:bg-yellow-600'
-              : 'bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200'
+              ? 'bg-warning text-text-inverse hover:opacity-90'
+              : 'bg-primary text-text-inverse hover:bg-primary-hover'
           }`}
         >
           {loading && (
@@ -140,17 +140,17 @@ export function AlertModal({
   variant = 'info',
 }: AlertModalProps) {
   const variantStyles = {
-    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-    warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+    info: 'bg-info/10 border-info/30',
+    success: 'bg-success/10 border-success/30',
+    warning: 'bg-warning/10 border-warning/30',
+    error: 'bg-error/10 border-error/30',
   };
 
   const variantTextColors = {
-    info: 'text-blue-600 dark:text-blue-400',
-    success: 'text-green-600 dark:text-green-400',
-    warning: 'text-yellow-600 dark:text-yellow-400',
-    error: 'text-red-600 dark:text-red-400',
+    info: 'text-info',
+    success: 'text-success',
+    warning: 'text-warning',
+    error: 'text-error',
   };
 
   return (
@@ -160,7 +160,7 @@ export function AlertModal({
       </div>
       <button
         onClick={onClose}
-        className="w-full px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+        className="w-full px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors"
       >
         {buttonText}
       </button>
@@ -209,7 +209,7 @@ export function PromptModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} showCloseButton={false}>
-      <p className="text-zinc-600 dark:text-zinc-400 mb-4">{message}</p>
+      <p className="text-text-secondary mb-4">{message}</p>
       <input
         type="text"
         value={value}
@@ -217,19 +217,19 @@ export function PromptModal({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoFocus
-        className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white mb-6"
+        className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary mb-6"
       />
       <div className="flex gap-3">
         <button
           onClick={onClose}
-          className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
         >
           {cancelText}
         </button>
         <button
           onClick={handleConfirm}
           disabled={!value.trim()}
-          className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+          className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
         >
           {confirmText}
         </button>

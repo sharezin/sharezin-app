@@ -91,25 +91,25 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-black dark:text-zinc-50 mb-2">
+          <h1 className="text-3xl font-bold text-text-primary mb-2">
             Sharezin
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-secondary">
             Divisão de Recibos
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 shadow-lg">
-          <h2 className="text-2xl font-semibold text-black dark:text-zinc-50 mb-6">
+        <div className="bg-surface rounded-lg p-6 shadow-lg">
+          <h2 className="text-2xl font-semibold text-text-primary mb-6">
             Criar Conta
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Nome
               </label>
               <input
@@ -118,13 +118,13 @@ export default function RegisterPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Seu nome"
                 autoComplete="name"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Email
               </label>
               <input
@@ -133,13 +133,13 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 autoComplete="email"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Senha
               </label>
               <div className="relative">
@@ -149,14 +149,14 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white pr-12"
+                  className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary pr-12"
                   required
                   minLength={6}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-50"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
                   aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showPassword ? (
@@ -174,7 +174,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Confirmar Senha
               </label>
               <input
@@ -183,7 +183,7 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Digite a senha novamente"
                 autoComplete="new-password"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 required
                 minLength={6}
               />
@@ -191,18 +191,18 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors"
             >
               Criar Conta
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-text-secondary">
               Já tem uma conta?{' '}
               <Link
                 href="/login"
-                className="text-black dark:text-white font-medium hover:underline"
+                className="text-text-primary font-medium hover:underline"
               >
                 Entrar
               </Link>

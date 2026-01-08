@@ -78,14 +78,14 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <p className="text-text-secondary">Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black pb-20 relative">
+    <div className="min-h-screen bg-bg pb-20 relative">
       {/* Indicador de pull-to-refresh */}
       {pullDistance > 0 && (
         <div 
@@ -95,7 +95,7 @@ export default function Home() {
             opacity: Math.min(pullProgress, 1),
           }}
         >
-          <div className="bg-zinc-800 dark:bg-zinc-900 text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
+          <div className="bg-surface-alt text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
             {isRefreshing ? (
               <>
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -127,12 +127,12 @@ export default function Home() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-bold text-text-primary">
               Sharezin
             </h1>
             <button
               onClick={() => setShowSearch(true)}
-              className="p-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
               aria-label="Buscar recibo"
             >
               <svg
@@ -150,7 +150,7 @@ export default function Home() {
               </svg>
             </button>
           </div>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-secondary">
             Gerencie recibos compartilhados
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function Home() {
           <EmptyState
             icon={
               <svg
-                className="h-16 w-16 text-zinc-400 dark:text-zinc-600"
+                className="h-16 w-16 text-text-muted"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -202,7 +202,7 @@ export default function Home() {
       {/* Floating Action Button */}
       <button
         onClick={handleCreateReceipt}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-lg hover:shadow-xl flex items-center justify-center z-[60]"
+        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center z-[60]"
         aria-label="Criar novo recibo"
       >
         <svg

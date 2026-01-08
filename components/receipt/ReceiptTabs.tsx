@@ -47,15 +47,15 @@ export function ReceiptTabs({
   const [activeTab, setActiveTab] = useState<'history' | 'summary'>('history');
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg">
+    <div className="bg-surface rounded-lg">
       {/* Tab Headers */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-700">
+      <div className="flex border-b border-border-strong">
         <button
           onClick={() => setActiveTab('history')}
           className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'history'
-              ? 'text-black dark:text-zinc-50 border-b-2 border-black dark:border-white'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-50'
+              ? 'text-text-primary border-b-2 border-primary'
+              : 'text-text-secondary hover:text-text-primary'
           }`}
         >
           Histórico
@@ -64,8 +64,8 @@ export function ReceiptTabs({
           onClick={() => setActiveTab('summary')}
           className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'summary'
-              ? 'text-black dark:text-zinc-50 border-b-2 border-black dark:border-white'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-50'
+              ? 'text-text-primary border-b-2 border-primary'
+              : 'text-text-secondary hover:text-text-primary'
           }`}
         >
           Resumo

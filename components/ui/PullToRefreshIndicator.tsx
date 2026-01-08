@@ -21,7 +21,7 @@ export function PullToRefreshIndicator({
         opacity: Math.min(pullProgress, 1),
       }}
     >
-      <div className="bg-zinc-800 dark:bg-zinc-900 text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
+      <div className="bg-surface-alt text-text-inverse px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
         {isRefreshing ? (
           <>
             <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

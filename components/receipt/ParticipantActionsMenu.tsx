@@ -93,7 +93,7 @@ export function ParticipantActionsMenu({
           />
           <div 
             ref={menuRef}
-            className="fixed bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-xl z-[101] w-56" 
+            className="fixed bg-surface rounded-lg border border-border-strong shadow-xl z-[101] w-56" 
             style={{ 
               top: `${menuPosition.top}px`,
               right: `${menuPosition.right}px`,
@@ -108,7 +108,7 @@ export function ParticipantActionsMenu({
                   }
                 }}
                 disabled={closingParticipation}
-                className="w-full px-4 py-3 text-left text-sm text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-t-lg flex items-center gap-2"
+                className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-t-lg flex items-center gap-2"
               >
                 {closingParticipation ? (
                   <>
@@ -139,7 +139,7 @@ export function ParticipantActionsMenu({
               </button>
             )}
             {!isClosed && !receiptClosed && (
-              <div className="border-t border-zinc-200 dark:border-zinc-700"></div>
+              <div className="border-t border-border-strong"></div>
             )}
             <button
               onClick={() => {
@@ -147,7 +147,7 @@ export function ParticipantActionsMenu({
                 onRemoveParticipant();
               }}
               disabled={removingParticipant}
-              className={`w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${!isClosed && !receiptClosed ? 'rounded-b-lg' : 'rounded-lg'} flex items-center gap-2`}
+              className={`w-full px-4 py-3 text-left text-sm text-error hover:bg-error/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${!isClosed && !receiptClosed ? 'rounded-b-lg' : 'rounded-lg'} flex items-center gap-2`}
             >
               {removingParticipant ? (
                 <>

@@ -563,14 +563,14 @@ export default function ReceiptDetailPage() {
   // IMPORTANTE: Este early return deve estar DEPOIS de todos os hooks
   if (loading || authLoading || !receipt || !user) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <p className="text-text-secondary">Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black relative">
+    <div className="min-h-screen bg-bg relative">
       <PullToRefreshIndicator
         pullDistance={pullDistance}
         pullProgress={pullProgress}
@@ -626,7 +626,7 @@ export default function ReceiptDetailPage() {
       {canAddItems && (
         <button
           onClick={() => setShowProductForm(true)}
-          className="fixed bottom-24 right-4 sm:right-6 w-14 h-14 rounded-full bg-black dark:bg-white text-white dark:text-black shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all hover:scale-110 flex items-center justify-center z-40"
+          className="fixed bottom-24 right-4 sm:right-6 w-14 h-14 rounded-full bg-primary text-text-inverse shadow-lg hover:bg-primary-hover transition-all hover:scale-110 flex items-center justify-center z-40"
           aria-label="Adicionar Produto"
         >
           <svg

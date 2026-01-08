@@ -17,8 +17,8 @@ export function SummaryCard({ receipt }: SummaryCardProps) {
   );
 
   return (
-    <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4 space-y-4">
-      <h3 className="text-lg font-semibold text-black dark:text-zinc-50">
+    <div className="bg-secondary-soft rounded-lg p-4 space-y-4">
+      <h3 className="text-lg font-semibold text-text-primary">
         Resumo
       </h3>
 
@@ -28,12 +28,12 @@ export function SummaryCard({ receipt }: SummaryCardProps) {
           return (
             <div
               key={participant.id}
-              className="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg"
+              className="flex items-center justify-between p-3 bg-surface-alt rounded-lg"
             >
-              <span className="text-black dark:text-zinc-50 font-medium">
+              <span className="text-text-primary font-medium">
                 {participant.name}
               </span>
-              <span className="text-lg font-semibold text-black dark:text-zinc-50">
+              <span className="text-lg font-semibold text-text-primary">
                 {formatCurrency(total)}
               </span>
             </div>
@@ -41,19 +41,19 @@ export function SummaryCard({ receipt }: SummaryCardProps) {
         })}
       </div>
 
-      <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+      <div className="pt-4 border-t border-border-strong">
         <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold text-black dark:text-zinc-50">
+          <span className="text-lg font-semibold text-text-primary">
             Total
           </span>
-          <span className="text-xl font-bold text-black dark:text-zinc-50">
+          <span className="text-xl font-bold text-text-primary">
             {formatCurrency(receiptTotal)}
           </span>
         </div>
       </div>
 
       {(serviceChargeAmount > 0 || receipt.cover > 0) && (
-        <div className="pt-2 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="pt-2 space-y-1 text-sm text-text-secondary">
           {serviceChargeAmount > 0 && (
             <div className="flex justify-between">
               <span>Taxa do garçom ({receipt.serviceChargePercent}%):</span>

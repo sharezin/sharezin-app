@@ -37,21 +37,21 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-black dark:text-zinc-50">
+        <h3 className="text-lg font-semibold text-text-primary">
           Participantes ({participants.length})
         </h3>
         <div className="flex gap-2">
           {groups.length > 0 && (
             <button
               onClick={() => setShowGroupSelector(true)}
-              className="px-4 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              className="px-4 py-2 text-sm rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
             >
               Do Grupo
             </button>
           )}
           <button
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 text-sm rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+            className="px-4 py-2 text-sm rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors"
           >
             + Adicionar
           </button>
@@ -59,7 +59,7 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
       </div>
 
       {showAddForm && (
-        <div className="flex gap-2 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+        <div className="flex gap-2 p-3 bg-secondary-soft rounded-lg">
           <input
             type="text"
             value={newParticipantName}
@@ -70,11 +70,11 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
             }}
             placeholder="Nome do participante"
             autoFocus
-            className="flex-1 px-3 py-2 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            className="flex-1 px-3 py-2 rounded border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <button
             onClick={handleAddParticipant}
-            className="px-4 py-2 rounded bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+            className="px-4 py-2 rounded bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors"
           >
             OK
           </button>
@@ -83,7 +83,7 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
               setShowAddForm(false);
               setNewParticipantName('');
             }}
-            className="px-4 py-2 rounded border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="px-4 py-2 rounded border border-border text-text-primary hover:bg-secondary-hover transition-colors"
           >
             Cancelar
           </button>
@@ -91,7 +91,7 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
       )}
 
       {participants.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+        <p className="text-text-muted text-sm">
           Nenhum participante adicionado ainda.
         </p>
       ) : (
@@ -99,12 +99,12 @@ export function ParticipantList({ participants, onAdd, onRemove }: ParticipantLi
           {participants.map(participant => (
             <div
               key={participant.id}
-              className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg"
+              className="flex items-center justify-between p-3 bg-secondary-soft rounded-lg"
             >
-              <span className="text-black dark:text-zinc-50">{participant.name}</span>
+              <span className="text-text-primary">{participant.name}</span>
               <button
                 onClick={() => onRemove(participant.id)}
-                className="px-3 py-1 text-sm rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="px-3 py-1 text-sm rounded text-error hover:bg-error/10 transition-colors"
               >
                 Remover
               </button>

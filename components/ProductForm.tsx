@@ -100,8 +100,8 @@ export function ProductForm({ onAdd, onClose, currentUserId, currentUserName }: 
 
   return (
     <div className="fixed inset-0 flex items-end bg-black/50 sm:items-center sm:justify-center" style={{ zIndex: 9998 }}>
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4 text-black dark:text-zinc-50">
+      <div className="w-full max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-semibold mb-4 text-text-primary">
           Adicionar Produto
         </h2>
 

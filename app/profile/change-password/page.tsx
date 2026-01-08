@@ -91,8 +91,8 @@ export default function ChangePasswordPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <p className="text-text-secondary">Carregando...</p>
       </div>
     );
   }
@@ -103,13 +103,13 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black pb-20">
+    <div className="min-h-screen bg-bg pb-20">
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <button
               onClick={() => router.push('/profile')}
-              className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
               aria-label="Voltar"
             >
               <svg
@@ -126,19 +126,19 @@ export default function ChangePasswordPage() {
                 />
               </svg>
             </button>
-            <h1 className="text-2xl font-bold text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-bold text-text-primary">
               Trocar Senha
             </h1>
           </div>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-secondary">
             Altere sua senha de acesso
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 space-y-6">
+        <div className="bg-surface rounded-lg p-6 space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Senha Atual
               </label>
               <input
@@ -151,18 +151,18 @@ export default function ChangePasswordPage() {
                   }
                 }}
                 placeholder="Digite sua senha atual"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 disabled={isChangingPassword}
               />
               {passwordErrors.currentPassword && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                <p className="text-sm text-error mt-1">
                   {passwordErrors.currentPassword}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Nova Senha
               </label>
               <input
@@ -179,18 +179,18 @@ export default function ChangePasswordPage() {
                   }
                 }}
                 placeholder="Digite sua nova senha (mín. 6 caracteres)"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 disabled={isChangingPassword}
               />
               {passwordErrors.newPassword && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                <p className="text-sm text-error mt-1">
                   {passwordErrors.newPassword}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black dark:text-zinc-50 mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Confirmar Nova Senha
               </label>
               <input
@@ -203,11 +203,11 @@ export default function ChangePasswordPage() {
                   }
                 }}
                 placeholder="Digite novamente sua nova senha"
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                 disabled={isChangingPassword}
               />
               {passwordErrors.confirmPassword && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                <p className="text-sm text-error mt-1">
                   {passwordErrors.confirmPassword}
                 </p>
               )}
@@ -217,14 +217,14 @@ export default function ChangePasswordPage() {
               <button
                 onClick={() => router.push('/profile')}
                 disabled={isChangingPassword}
-                className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-600 text-black dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleChangePassword}
                 disabled={isChangingPassword}
-                className="flex-1 px-4 py-3 rounded-lg bg-black dark:bg-white text-white dark:text-black font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isChangingPassword ? (
                   <>

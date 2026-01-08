@@ -23,18 +23,18 @@ export function ReceiptTotalCard({ receipt, receiptTotal }: ReceiptTotalCardProp
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 mb-6">
+    <div className="bg-surface rounded-lg p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-lg font-semibold text-black dark:text-zinc-50">
+        <span className="text-lg font-semibold text-text-primary">
           Total do Recibo
         </span>
-        <span className="text-2xl font-bold text-black dark:text-zinc-50">
+        <span className="text-2xl font-bold text-text-primary">
           {formatCurrency(receiptTotal)}
         </span>
       </div>
 
       {(receipt.serviceChargePercent > 0 || receipt.cover > 0) && (
-        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="pt-4 border-t border-border-strong space-y-1 text-sm text-text-secondary">
           <div className="flex justify-between">
             <span>Subtotal (itens):</span>
             <span>{formatCurrency(itemsTotal)}</span>
@@ -55,7 +55,7 @@ export function ReceiptTotalCard({ receipt, receiptTotal }: ReceiptTotalCardProp
       )}
 
       {receipt.isClosed && (
-        <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="pt-4 mt-4 border-t border-border-strong">
           <Button
             onClick={handleGeneratePDF}
             variant="secondary"

@@ -32,7 +32,7 @@ export function ReceiptHeader({
       <div className="flex items-center gap-3 mb-3">
         <BackButton />
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-black dark:text-zinc-50">
+          <h1 className="text-xl font-bold text-text-primary">
             {receipt.title}
           </h1>
         </div>
@@ -50,7 +50,7 @@ export function ReceiptHeader({
           />
         )}
       </div>
-      <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+      <p className="text-text-secondary text-sm">
         {new Date(receipt.date).toLocaleDateString('pt-BR', {
           day: 'numeric',
           month: 'long',

@@ -40,8 +40,8 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center pb-20">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      <div className="min-h-screen bg-bg flex items-center justify-center pb-20">
+        <p className="text-text-secondary">Carregando...</p>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function HistoryPage() {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black pb-20 relative">
+    <div className="min-h-screen bg-bg pb-20 relative">
       {/* Indicador de pull-to-refresh */}
       {pullDistance > 0 && (
         <div 
@@ -82,7 +82,7 @@ export default function HistoryPage() {
             opacity: Math.min(pullProgress, 1),
           }}
         >
-          <div className="bg-zinc-800 dark:bg-zinc-900 text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
+          <div className="bg-surface-alt text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
             {isRefreshing ? (
               <>
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -113,10 +113,10 @@ export default function HistoryPage() {
       )}
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-black dark:text-zinc-50 mb-2">
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
             Histórico de Recibos
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-secondary">
             Todos os recibos criados e participados
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function HistoryPage() {
           <EmptyState
             icon={
               <svg
-                className="h-16 w-16 text-zinc-400 dark:text-zinc-600"
+                className="h-16 w-16 text-text-muted"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -144,7 +144,7 @@ export default function HistoryPage() {
           <div className="space-y-6">
             {sortedDates.map(date => (
               <div key={date}>
-                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase">
+                <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase">
                   {date}
                 </h2>
                 <div className="space-y-3">

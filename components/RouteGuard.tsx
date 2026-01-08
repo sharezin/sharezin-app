@@ -52,8 +52,8 @@ export function RouteGuard({ children }: RouteGuardProps) {
 
   if (isChecking && !isPublicRoute) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <p className="text-text-secondary">Carregando...</p>
       </div>
     );
   }
