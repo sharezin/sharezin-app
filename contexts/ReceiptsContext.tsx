@@ -24,13 +24,20 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
     // Verifica se há token de autenticação antes de fazer a requisição
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      setReceipts([]);
-      setLoading(false);
+      // Usa setTimeout para garantir que a atualização aconteça após o render
+      setTimeout(() => {
+        setReceipts([]);
+        setLoading(false);
+      }, 0);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    // Usa setTimeout para garantir que a atualização aconteça após o render
+    setTimeout(() => {
+      setLoading(true);
+      setError(null);
+    }, 0);
+
     try {
       // Busca recibos com ou sem fechados dependendo do parâmetro
       const url = includeClosed 
@@ -38,6 +45,7 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
         : '/api/receipts';
       const response = await apiRequest<{ receipts: ApiReceipt[] }>(url);
       const transformedReceipts = response.receipts.map(transformReceiptFromApi);
+      
       setReceipts(transformedReceipts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar recibos';

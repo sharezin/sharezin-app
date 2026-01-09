@@ -346,12 +346,104 @@ export type Database = {
         }
         Relationships: []
       }
+      user_receipt_expenses: {
+        Row: {
+          calculated_at: string
+          cover_amount: number
+          id: string
+          is_closed: boolean
+          items_total: number
+          participant_id: string
+          period_day: string
+          period_month: string
+          receipt_date: string
+          receipt_id: string
+          receipt_title: string
+          service_charge_amount: number
+          total_spent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          cover_amount?: number
+          id?: string
+          is_closed?: boolean
+          items_total?: number
+          participant_id: string
+          period_day: string
+          period_month: string
+          receipt_date: string
+          receipt_id: string
+          receipt_title: string
+          service_charge_amount?: number
+          total_spent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          cover_amount?: number
+          id?: string
+          is_closed?: boolean
+          items_total?: number
+          participant_id?: string
+          period_day?: string
+          period_month?: string
+          receipt_date?: string
+          receipt_id?: string
+          receipt_title?: string
+          service_charge_amount?: number
+          total_spent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_receipt_expenses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_receipt_expenses_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_receipt_expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "sharezin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_user_receipt_expense: {
+        Args: { p_participant_id: string; p_receipt_id: string }
+        Returns: {
+          cover_amount: number
+          items_total: number
+          service_charge_amount: number
+          total_spent: number
+        }[]
+      }
+      recalculate_receipt_expenses: {
+        Args: { p_receipt_id: string }
+        Returns: undefined
+      }
+      upsert_user_receipt_expense: {
+        Args: { p_participant_id: string; p_receipt_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
