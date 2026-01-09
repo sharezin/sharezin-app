@@ -17,6 +17,18 @@ export function usePullToRefresh({
   const [pullDistance, setPullDistance] = useState(0);
   const startY = useRef<number | null>(null);
   const isPulling = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  const isRefreshingRef = useRef(false);
+  
+  // Atualiza a referência do onRefresh sem recriar os listeners
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
+  // Sincroniza o ref com o estado
+  useEffect(() => {
+    isRefreshingRef.current = isRefreshing;
+  }, [isRefreshing]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -54,9 +66,9 @@ export function usePullToRefresh({
 
       // Usar o valor atual do pullDistance através de uma função de callback
       setPullDistance((currentDistance) => {
-        if (currentDistance >= threshold && !isRefreshing) {
+        if (currentDistance >= threshold && !isRefreshingRef.current) {
           setIsRefreshing(true);
-          Promise.resolve(onRefresh())
+          Promise.resolve(onRefreshRef.current())
             .then(() => {
               setIsRefreshing(false);
               setPullDistance(0);
@@ -84,7 +96,7 @@ export function usePullToRefresh({
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [enabled, onRefresh, threshold, isRefreshing]);
+  }, [enabled, threshold]);
 
   return {
     isRefreshing,
