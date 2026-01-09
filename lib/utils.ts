@@ -1,3 +1,13 @@
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+/**
+ * Combina classes CSS com suporte a Tailwind merge
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
 /**
  * Gera um código de convite único (6 caracteres alfanuméricos em maiúsculas)
  */

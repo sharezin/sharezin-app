@@ -8,11 +8,14 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { StatCard } from '@/components/ui/StatCard';
 import { ChartCard } from '@/components/ui/ChartCard';
 import { OpenReceiptsAlert } from '@/components/ui/OpenReceiptsAlert';
+import { ExpensesByPeriodChart } from '@/components/dashboard/ExpensesByPeriodChart';
+import { ExpenseDistributionRadialChart } from '@/components/dashboard/ExpenseDistributionRadialChart';
 import { formatCurrency } from '@/lib/calculations';
 import { Receipt } from '@/types';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import dynamic from 'next/dynamic';
 
-const DynamicSearchReceipt = dynamic(() => import('@/components/SearchReceipt').then(mod => ({ default: mod.SearchReceipt })), {
+const DynamicCreateOrJoinReceiptModal = dynamic(() => import('@/components/CreateOrJoinReceiptModal').then(mod => ({ default: mod.CreateOrJoinReceiptModal })), {
   loading: () => null,
   ssr: false,
 });
@@ -22,7 +25,8 @@ export default function Home() {
   const pathname = usePathname();
   const { receipts, loading, loadReceipts } = useReceiptsContext();
   const { user } = useAuth();
-  const [showSearch, setShowSearch] = useState(false);
+  const { stats: dashboardStats, loading: statsLoading, refetch: refetchStats } = useDashboardStats();
+  const [showCreateOrJoinModal, setShowCreateOrJoinModal] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const hasLoadedRef = useRef(false);
   
@@ -34,7 +38,10 @@ export default function Home() {
   const { isRefreshing, pullDistance, pullProgress } = usePullToRefresh({
     onRefresh: async () => {
       if (user?.id) {
-        await loadReceipts(true); // Carrega todos os recibos incluindo fechados
+        await Promise.all([
+          loadReceipts(true), // Carrega todos os recibos incluindo fechados
+          refetchStats(), // Atualiza estatísticas do dashboard
+        ]);
       }
     },
     enabled: !!user?.id && !loading,
@@ -46,12 +53,12 @@ export default function Home() {
     if (user?.id && pathname === '/' && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
       setIsInitialLoad(true);
-      // Usa setTimeout para evitar setState síncrono dentro de effect
-      setTimeout(() => {
+      // Usa queueMicrotask para garantir que a atualização aconteça após o render
+      queueMicrotask(() => {
         loadReceipts(true).then(() => {
           setIsInitialLoad(false);
         });
-      }, 0);
+      });
     }
   }, [user?.id, pathname, loadReceipts]);
 
@@ -83,15 +90,12 @@ export default function Home() {
 
   // Calcula estatísticas
   const stats = useMemo(() => {
-    const openReceipts = receipts.filter((r: Receipt) => !r.isClosed);
-    const closedReceipts = receipts.filter((r: Receipt) => r.isClosed);
     const totalSpent = receipts.reduce((sum: number, r: Receipt) => sum + (r.total || 0), 0);
     const averageReceipt = receipts.length > 0 ? totalSpent / receipts.length : 0;
 
     return {
       totalSpent,
-      activeReceipts: openReceipts.length,
-      closedReceipts: closedReceipts.length,
+      totalReceipts: receipts.length,
       averageReceipt,
     };
   }, [receipts]);
@@ -156,30 +160,9 @@ export default function Home() {
       
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-text-primary">
-              Dashboard
-            </h1>
-            <button
-              onClick={() => setShowSearch(true)}
-              className="p-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
-              aria-label="Buscar recibo"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
+            Dashboard
+          </h1>
           <p className="text-text-secondary">
             Visão geral dos seus recibos
           </p>
@@ -189,7 +172,7 @@ export default function Home() {
         <OpenReceiptsAlert receipts={receipts} />
 
         {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="space-y-4 mb-6">
           <StatCard
             title="Total Gasto"
             value={formatCurrency(stats.totalSpent)}
@@ -199,54 +182,68 @@ export default function Home() {
               </svg>
             }
           />
-          <StatCard
-            title="Recibos Ativos"
-            value={stats.activeReceipts}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Recibos Fechados"
-            value={stats.closedReceipts}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Média por Recibo"
-            value={formatCurrency(stats.averageReceipt)}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            }
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard
+              title="Recibos Totais"
+              value={stats.totalReceipts}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              }
+            />
+            <StatCard
+              title="Média por Recibo"
+              value={formatCurrency(stats.averageReceipt)}
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              }
+            />
+          </div>
         </div>
 
-        {/* Gráficos (Placeholders) */}
+        {/* Gráficos */}
         <div className="space-y-4 mb-6">
           <ChartCard title="Gastos por Período">
-            <div className="text-center text-text-muted">
-              <svg className="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p className="text-sm">Gráfico será implementado em breve</p>
-            </div>
+            {statsLoading ? (
+              <div className="flex items-center justify-center h-[250px]">
+                <div className="flex flex-col items-center gap-2">
+                  <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-sm text-text-secondary">Carregando dados...</p>
+                </div>
+              </div>
+            ) : dashboardStats?.expensesByPeriod ? (
+              <ExpensesByPeriodChart data={dashboardStats.expensesByPeriod} />
+            ) : (
+              <div className="text-center text-text-muted py-8">
+                <p className="text-sm">Nenhum dado disponível</p>
+              </div>
+            )}
           </ChartCard>
 
           <ChartCard title="Distribuição de Gastos">
-            <div className="text-center text-text-muted">
-              <svg className="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-              </svg>
-              <p className="text-sm">Gráfico será implementado em breve</p>
-            </div>
+            {statsLoading ? (
+              <div className="flex items-center justify-center h-[250px]">
+                <div className="flex flex-col items-center gap-2">
+                  <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-sm text-text-secondary">Carregando dados...</p>
+                </div>
+              </div>
+            ) : dashboardStats?.expenseDistribution ? (
+              <ExpenseDistributionRadialChart data={dashboardStats.expenseDistribution} />
+            ) : (
+              <div className="text-center text-text-muted py-8">
+                <p className="text-sm">Nenhum dado disponível</p>
+              </div>
+            )}
           </ChartCard>
         </div>
 
@@ -265,9 +262,10 @@ export default function Home() {
         )}
       </div>
 
-      {showSearch && (
-        <DynamicSearchReceipt
-          onClose={() => setShowSearch(false)}
+      {showCreateOrJoinModal && (
+        <DynamicCreateOrJoinReceiptModal
+          isOpen={showCreateOrJoinModal}
+          onClose={() => setShowCreateOrJoinModal(false)}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
         />

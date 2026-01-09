@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Receipt } from '@/types';
 import dynamic from 'next/dynamic';
 
-const DynamicSearchReceipt = dynamic(() => import('@/components/SearchReceipt').then(mod => ({ default: mod.SearchReceipt })), {
+const DynamicCreateOrJoinReceiptModal = dynamic(() => import('@/components/CreateOrJoinReceiptModal').then(mod => ({ default: mod.CreateOrJoinReceiptModal })), {
   loading: () => null,
   ssr: false,
 });
@@ -23,7 +23,7 @@ export default function ReceiptsPage() {
   const searchParams = useSearchParams();
   const { receipts, loading, loadReceipts } = useReceiptsContext();
   const { user } = useAuth();
-  const [showSearch, setShowSearch] = useState(false);
+  const [showCreateOrJoinModal, setShowCreateOrJoinModal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('open');
   const [hasLoaded, setHasLoaded] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -98,8 +98,33 @@ export default function ReceiptsPage() {
     return receipt.isClosed; // 'closed'
   });
 
+  // Agrupa recibos fechados por data
+  const groupedByDate = filter === 'closed' 
+    ? filteredReceipts.reduce((acc, receipt) => {
+        const dateKey = new Date(receipt.date).toLocaleDateString('pt-BR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        
+        if (!acc[dateKey]) {
+          acc[dateKey] = [];
+        }
+        acc[dateKey].push(receipt);
+        return acc;
+      }, {} as Record<string, Receipt[]>)
+    : {};
+
+  // Ordena as datas (mais recente primeiro) usando a data do primeiro recibo de cada grupo
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    // Pega a data do primeiro recibo de cada grupo para comparar
+    const dateA = new Date(groupedByDate[a][0].date).getTime();
+    const dateB = new Date(groupedByDate[b][0].date).getTime();
+    return dateB - dateA;
+  });
+
   const handleCreateReceipt = () => {
-    router.push('/receipt/new');
+    setShowCreateOrJoinModal(true);
   };
 
   const handleFilterChange = (newFilter: FilterType) => {
@@ -165,25 +190,6 @@ export default function ReceiptsPage() {
             <h1 className="text-2xl font-bold text-text-primary">
               Recibos
             </h1>
-            <button
-              onClick={() => setShowSearch(true)}
-              className="p-3 rounded-lg border border-border text-text-primary hover:bg-secondary-hover transition-colors"
-              aria-label="Buscar recibo"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </button>
           </div>
 
           {/* Filtros */}
@@ -239,7 +245,30 @@ export default function ReceiptsPage() {
                 : 'Crie um novo recibo ou busque um recibo existente usando o código de convite'
             }
           />
+        ) : filter === 'closed' && sortedDates.length > 0 ? (
+          // Renderiza recibos fechados agrupados por data
+          <div className="space-y-6">
+            {sortedDates.map(date => (
+              <div key={date}>
+                <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase">
+                  {date}
+                </h2>
+                <div className="space-y-3">
+                  {groupedByDate[date]
+                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                    .map(receipt => (
+                      <ReceiptCard
+                        key={receipt.id}
+                        receipt={receipt}
+                        href={`/receipt/${receipt.id}`}
+                      />
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          // Renderiza recibos abertos normalmente
           <div className="space-y-3">
             {filteredReceipts
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -254,9 +283,10 @@ export default function ReceiptsPage() {
         )}
       </div>
 
-      {showSearch && (
-        <DynamicSearchReceipt
-          onClose={() => setShowSearch(false)}
+      {showCreateOrJoinModal && (
+        <DynamicCreateOrJoinReceiptModal
+          isOpen={showCreateOrJoinModal}
+          onClose={() => setShowCreateOrJoinModal(false)}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
         />
@@ -266,7 +296,7 @@ export default function ReceiptsPage() {
       <button
         onClick={handleCreateReceipt}
         className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center z-[60]"
-        aria-label="Criar novo recibo"
+        aria-label="Adicionar recibo"
       >
         <svg
           className="w-6 h-6"
