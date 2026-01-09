@@ -28,27 +28,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     let resolved: 'light' | 'dark';
 
+    const applyTheme = (newResolved: 'light' | 'dark') => {
+      // Usa setTimeout para evitar setState síncrono dentro de effect
+      setTimeout(() => {
+        setResolvedTheme(newResolved);
+      }, 0);
+      if (newResolved === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+      } else {
+        root.removeAttribute('data-theme');
+      }
+    };
+
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       resolved = mediaQuery.matches ? 'dark' : 'light';
       
       // Aplica tema inicial
-      setResolvedTheme(resolved);
-      if (resolved === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-      } else {
-        root.removeAttribute('data-theme');
-      }
+      applyTheme(resolved);
 
       // Escuta mudanças na preferência do sistema
       const handleSystemThemeChange = (e: MediaQueryListEvent) => {
         resolved = e.matches ? 'dark' : 'light';
-        setResolvedTheme(resolved);
-        if (resolved === 'dark') {
-          root.setAttribute('data-theme', 'dark');
-        } else {
-          root.removeAttribute('data-theme');
-        }
+        applyTheme(resolved);
       };
 
       mediaQuery.addEventListener('change', handleSystemThemeChange);
@@ -58,12 +60,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       };
     } else {
       resolved = theme;
-      setResolvedTheme(resolved);
-      if (resolved === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-      } else {
-        root.removeAttribute('data-theme');
-      }
+      applyTheme(resolved);
     }
   }, [theme]);
 

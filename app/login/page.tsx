@@ -3,16 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AlertModal } from '@/components/Modal';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, checkAuth, loading } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isDarkMode = resolvedTheme === 'dark';
+  
+  const toggleTheme = () => {
+    setTheme(isDarkMode ? 'light' : 'dark');
+  };
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -68,9 +77,57 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+      {/* Dark Mode Button */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={toggleTheme}
+          className="p-3 rounded-lg bg-surface border border-border hover:bg-secondary-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          aria-label="Alternar modo escuro"
+        >
+          {isDarkMode ? (
+            <svg
+              className="w-5 h-5 text-text-primary"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5 text-text-primary"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+          )}
+        </button>
+      </div>
+
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/logo.svg"
+              alt="Sharezin Logo"
+              width={64}
+              height={64}
+              priority
+            />
+          </div>
           <h1 className="text-3xl font-bold text-text-primary mb-2">
             Sharezin
           </h1>
