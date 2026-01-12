@@ -9,6 +9,8 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReceiptPermissions } from '@/hooks/useReceiptPermissions';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
 import { supabase } from '@/lib/supabase';
+import { apiRequest } from '@/lib/api';
+import { NotificationType } from '@/types';
 import dynamic from 'next/dynamic';
 
 const ProductForm = dynamic(() => import('@/components/ProductForm').then(mod => ({ default: mod.ProductForm })), {
