@@ -1,15 +1,14 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useCalculations } from '@/hooks/useCalculations';
 import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReceiptPermissions } from '@/hooks/useReceiptPermissions';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
-import { apiRequest } from '@/lib/api';
-import { NotificationType } from '@/types';
+import { supabase } from '@/lib/supabase';
 import dynamic from 'next/dynamic';
 
 const ProductForm = dynamic(() => import('@/components/ProductForm').then(mod => ({ default: mod.ProductForm })), {
@@ -74,6 +73,9 @@ export default function ReceiptDetailPage() {
   const [approvingDeletionRequestId, setApprovingDeletionRequestId] = useState<string | null>(null);
   const [rejectingDeletionRequestId, setRejectingDeletionRequestId] = useState<string | null>(null);
   const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
+  
+  // Ref para gerenciar Realtime
+  const channelRef = useRef<any>(null);
 
   const { user, loading: authLoading } = useAuth();
   const { receiptTotal, participantTotals } = useCalculations(receipt);
@@ -98,7 +100,7 @@ export default function ReceiptDetailPage() {
     currentUserId,
   });
 
-  const loadReceipt = async () => {
+  const loadReceipt = useCallback(async () => {
     const id = params.id as string;
     const loadedReceipt = await getReceiptById(id);
     
@@ -109,7 +111,7 @@ export default function ReceiptDetailPage() {
     
     setReceipt(loadedReceipt);
     setLoading(false);
-  };
+  }, [params.id, getReceiptById, router]);
 
   useEffect(() => {
     // Só carregar o recibo quando o usuário estiver disponível
@@ -117,8 +119,113 @@ export default function ReceiptDetailPage() {
     if (user?.id) {
       loadReceipt();
     }
-  }, [params.id, getReceiptById, router, user?.id]);
+  }, [user?.id, loadReceipt]);
 
+
+  // Configurar Realtime para o recibo específico
+  useEffect(() => {
+    if (!receipt?.id || !user?.id) {
+      return;
+    }
+
+    // Limpar conexão anterior
+    if (channelRef.current) {
+      supabase?.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Tentar conectar ao Realtime para este recibo
+    if (supabase) {
+      try {
+        const channel = supabase
+          .channel(`receipt:${receipt.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipts',
+              filter: `id=eq.${receipt.id}`,
+            },
+            async () => {
+              // Recarregar recibo quando houver mudanças
+              await loadReceipt();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipt_items',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            async () => {
+              // Recarregar recibo quando itens mudarem
+              await loadReceipt();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipt_participants',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            async () => {
+              // Recarregar recibo quando participantes mudarem
+              await loadReceipt();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'pending_participants',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            async () => {
+              // Recarregar recibo quando participantes pendentes mudarem
+              await loadReceipt();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'deletion_requests',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            async () => {
+              // Recarregar recibo quando solicitações de exclusão mudarem
+              await loadReceipt();
+            }
+          )
+          .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Realtime conectado para recibo:', receipt.id);
+            } else {
+              console.warn('Erro na conexão Realtime do recibo:', status);
+            }
+          });
+
+        channelRef.current = channel;
+      } catch (err) {
+        console.error('Erro ao configurar Realtime do recibo:', err);
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (channelRef.current) {
+        supabase?.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [receipt?.id, user?.id, loadReceipt]);
 
   // Fallback: Recarrega o recibo quando a página volta a ficar visível (caso Realtime não esteja disponível)
   useEffect(() => {
@@ -178,37 +285,7 @@ export default function ReceiptDetailPage() {
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
-      
-      // Buscar todos os participantes do recibo e criar notificações (exceto quem adicionou)
-      try {
-        const participantsResponse = await apiRequest<{ userIds: string[] }>(
-          `/api/receipts/${receipt.id}/participants/user-ids`
-        );
-        
-        const participantUserIds = participantsResponse.userIds.filter(
-          userId => userId !== currentUserId && userId // Excluir quem adicionou e valores nulos
-        );
-        
-        // Criar notificações para todos os participantes
-        const notificationPromises = participantUserIds.map(userId =>
-          apiRequest('/api/notifications', {
-            method: 'POST',
-            body: JSON.stringify({
-              userId,
-              type: 'item_added' as NotificationType,
-              title: 'Novo item adicionado',
-              message: `${currentUserName} adicionou ${item.name} ao recibo ${receipt.title}`,
-              receiptId: receipt.id,
-              relatedUserId: currentUserId,
-            }),
-          })
-        );
-        
-        await Promise.all(notificationPromises);
-      } catch (error) {
-        // Não falhar a operação principal se as notificações falharem
-        console.error('Erro ao criar notificações de item adicionado:', error);
-      }
+      // Notificações agora são criadas automaticamente no backend
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar produto. Tente novamente.';
       setAlertModal({
