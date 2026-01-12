@@ -52,7 +52,9 @@ export function SummaryTab({
               }`}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className={`font-medium text-text-primary truncate ${
+                <span className={`font-medium text-text-primary ${
+                  receipt.isClosed ? '' : 'truncate'
+                } ${
                   participant.isClosed ? 'line-through opacity-60' : ''
                 }`}>
                   {participant.name || 'Sem nome'}
@@ -72,7 +74,7 @@ export function SummaryTab({
                 <span className="text-lg font-semibold text-text-primary">
                   {formatCurrency(total)}
                 </span>
-                {isCreator && !isCurrentUser && (
+                {isCreator && !isCurrentUser && !receipt.isClosed && (
                   <ParticipantActionsMenu
                     participantId={participant.id}
                     participantName={participant.name || 'Sem nome'}

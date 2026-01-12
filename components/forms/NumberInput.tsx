@@ -31,6 +31,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       <Input
         ref={ref}
         type="text"
+        inputMode={allowDecimals ? "decimal" : "numeric"}
+        pattern={allowDecimals ? "[0-9]*[.,]?[0-9]*" : "[0-9]*"}
         label={label}
         error={error}
         onChange={handleChange}

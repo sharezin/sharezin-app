@@ -5,6 +5,8 @@ import { Receipt, Participant, ReceiptItem } from '@/types';
 import { ParticipantList } from './ParticipantList';
 import { ItemList } from './ItemList';
 import { SummaryCard } from './SummaryCard';
+import { NumberInput } from './forms/NumberInput';
+import { CurrencyInput } from './forms/CurrencyInput';
 
 interface ReceiptFormProps {
   receipt: Receipt;
@@ -90,30 +92,19 @@ export function ReceiptForm({ receipt, onSave, onCancel }: ReceiptFormProps) {
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Taxa do Garçom
-          </label>
-          <input
-            type="text"
-            value={serviceCharge}
-            onChange={(e) => setServiceCharge(e.target.value.replace(/[^0-9,.]/g, ''))}
-            placeholder="0,00"
-            className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Cover
-          </label>
-          <input
-            type="text"
-            value={cover}
-            onChange={(e) => setCover(e.target.value.replace(/[^0-9,.]/g, ''))}
-            placeholder="0,00"
-            className="w-full px-4 py-3 rounded-lg border border-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
+        <NumberInput
+          label="Taxa do Garçom (%)"
+          value={serviceCharge}
+          onChange={setServiceCharge}
+          placeholder="Ex: 10"
+          allowDecimals={true}
+        />
+        <CurrencyInput
+          label="Cover (R$)"
+          value={cover}
+          onChange={setCover}
+          placeholder="Ex: 5,00"
+        />
       </div>
 
       {participants.length > 0 && (

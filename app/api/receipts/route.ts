@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils';
+import { fetchReceiptData } from '@/lib/services/receiptDataService';
 
 // GET /api/receipts - Listar recibos
 export async function GET(request: NextRequest) {
@@ -165,6 +166,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Adicionar o criador como participante automaticamente
+    // Verificar se já existe um participante com o user_id do criador
+    const { data: existingCreatorParticipant } = await supabase
+      .from('participants')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    let creatorParticipantId: string;
+
+    if (existingCreatorParticipant) {
+      // Usar participante existente
+      creatorParticipantId = existingCreatorParticipant.id;
+    } else {
+      // Criar novo participante para o criador
+      const { data: userData } = await supabase
+        .from('sharezin_users')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+
+      const { data: newParticipant, error: participantError } = await supabase
+        .from('participants')
+        .insert({
+          name: userData?.name || user.name,
+          user_id: user.id,
+          is_closed: false,
+        })
+        .select()
+        .single();
+
+      if (participantError || !newParticipant) {
+        console.error('Erro ao criar participante para o criador:', participantError);
+        // Se falhar, não adicionar como participante agora (será criado quando adicionar primeiro item)
+        creatorParticipantId = '';
+      } else {
+        creatorParticipantId = newParticipant.id;
+      }
+    }
+
+    // Adicionar criador como participante do recibo (se conseguiu criar/encontrar o participante)
+    if (creatorParticipantId) {
+      await supabase
+        .from('receipt_participants')
+        .insert({
+          receipt_id: receipt.id,
+          participant_id: creatorParticipantId,
+        });
+    }
+
     // Se groupId foi fornecido, adicionar participantes do grupo
     if (groupId) {
       const { data: groupParticipants } = await supabase
@@ -173,23 +224,30 @@ export async function POST(request: NextRequest) {
         .eq('group_id', groupId);
 
       if (groupParticipants && groupParticipants.length > 0) {
-        const receiptParticipants = groupParticipants.map(p => ({
-          receipt_id: receipt.id,
-          participant_id: p.id,
-        }));
+        const receiptParticipants = groupParticipants
+          .filter(p => p.id !== creatorParticipantId) // Evitar duplicar o criador
+          .map(p => ({
+            receipt_id: receipt.id,
+            participant_id: p.id,
+          }));
 
-        await supabase.from('receipt_participants').insert(receiptParticipants);
+        if (receiptParticipants.length > 0) {
+          await supabase.from('receipt_participants').insert(receiptParticipants);
+        }
       }
     }
+
+    // Buscar dados completos do recibo incluindo o participante criador
+    const receiptData = await fetchReceiptData(supabase, receipt.id);
 
     return NextResponse.json(
       {
             receipt: {
               ...receipt,
-              participants: [],
-              pending_participants: [],
-              items: [],
-              deletion_requests: [],
+              participants: receiptData.participants,
+              pending_participants: receiptData.pendingParticipants,
+              items: receiptData.items,
+              deletion_requests: receiptData.deletionRequests,
             },
       },
       { status: 201 }
