@@ -59,6 +59,8 @@ export default function ReceiptDetailPage() {
     isOpen: false,
     itemId: null,
   });
+  const [closeReceiptConfirm, setCloseReceiptConfirm] = useState(false);
+  const [closeParticipationConfirm, setCloseParticipationConfirm] = useState(false);
   const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
   const [showUserReceiptSummary, setShowUserReceiptSummary] = useState(false);
   const [closingReceipt, setClosingReceipt] = useState(false);
@@ -251,6 +253,18 @@ export default function ReceiptDetailPage() {
 
   const handleRequestDeletion = async (itemId: string) => {
     if (!receipt) return;
+
+    // Verifica se o participante fechou sua participação
+    const currentParticipant = receipt.participants.find(p => p.id === currentUserId);
+    if (currentParticipant?.isClosed) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Aviso',
+        message: 'Você fechou sua participação neste recibo e não pode mais solicitar exclusão de itens',
+        variant: 'warning',
+      });
+      return;
+    }
 
     // Verifica se já existe uma solicitação para este item
     const existingRequest = receipt.deletionRequests.find(req => req.itemId === itemId);
@@ -563,7 +577,6 @@ export default function ReceiptDetailPage() {
     if (!receipt || !isCreator) return;
 
     setClosingReceipt(true);
-    // Não fecha o menu imediatamente para mostrar o loading
 
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -574,6 +587,10 @@ export default function ReceiptDetailPage() {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
       
+      // Fechar modal de confirmação
+      setCloseReceiptConfirm(false);
+      
+      // Mostrar modal de feedback de sucesso
       setAlertModal({
         isOpen: true,
         title: 'Recibo Fechado',
@@ -581,6 +598,9 @@ export default function ReceiptDetailPage() {
         variant: 'success',
       });
     } catch (error) {
+      // Fechar modal de confirmação mesmo em caso de erro
+      setCloseReceiptConfirm(false);
+      
       setAlertModal({
         isOpen: true,
         title: 'Erro',
@@ -660,7 +680,6 @@ export default function ReceiptDetailPage() {
     if (!currentParticipant) return;
 
     setClosingParticipation(true);
-    // Não fecha o menu imediatamente para mostrar o loading
 
     const updatedParticipants = receipt.participants.map(p =>
       p.id === currentUserId ? { ...p, isClosed: true } : p
@@ -675,9 +694,25 @@ export default function ReceiptDetailPage() {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
       
-      // Mostrar recibo do participante
-      setShowParticipantReceipt(true);
+      // Fechar modal de confirmação
+      setCloseParticipationConfirm(false);
+      
+      // Mostrar modal de feedback de sucesso
+      setAlertModal({
+        isOpen: true,
+        title: 'Participação Fechada',
+        message: 'Sua participação foi fechada. Você não poderá mais adicionar produtos a este recibo.',
+        variant: 'success',
+      });
+      
+      // Mostrar recibo do participante após um pequeno delay para o usuário ver o feedback
+      setTimeout(() => {
+        setShowParticipantReceipt(true);
+      }, 1500);
     } catch (error) {
+      // Fechar modal de confirmação mesmo em caso de erro
+      setCloseParticipationConfirm(false);
+      
       setAlertModal({
         isOpen: true,
         title: 'Erro',
@@ -721,8 +756,8 @@ export default function ReceiptDetailPage() {
         <ReceiptHeader
           receipt={receipt}
           isCreator={isCreator}
-          onCloseReceipt={handleCloseReceipt}
-          onCloseParticipation={handleCloseParticipation}
+          onCloseReceipt={() => setCloseReceiptConfirm(true)}
+          onCloseParticipation={() => setCloseParticipationConfirm(true)}
           onShowInviteCode={() => setShowInviteCodeModal(true)}
           onShowUserReceiptSummary={() => setShowUserReceiptSummary(true)}
           closingReceipt={closingReceipt}
@@ -837,6 +872,40 @@ export default function ReceiptDetailPage() {
         confirmVariant="danger"
         loading={removingParticipantId === participantToRemove}
         disabled={removingParticipantId === participantToRemove}
+      />
+
+      <ConfirmModal
+        isOpen={closeReceiptConfirm}
+        onClose={() => {
+          if (!closingReceipt) {
+            setCloseReceiptConfirm(false);
+          }
+        }}
+        onConfirm={handleCloseReceipt}
+        title="Fechar Recibo"
+        message="Tem certeza que deseja fechar este recibo? Ninguém poderá mais adicionar produtos após o fechamento."
+        confirmText="Fechar Recibo"
+        cancelText="Cancelar"
+        confirmVariant="warning"
+        loading={closingReceipt}
+        disabled={closingReceipt}
+      />
+
+      <ConfirmModal
+        isOpen={closeParticipationConfirm}
+        onClose={() => {
+          if (!closingParticipation) {
+            setCloseParticipationConfirm(false);
+          }
+        }}
+        onConfirm={handleCloseParticipation}
+        title="Fechar Minha Participação"
+        message="Tem certeza que deseja fechar sua participação? Você não poderá mais adicionar produtos a este recibo após o fechamento."
+        confirmText="Fechar Participação"
+        cancelText="Cancelar"
+        confirmVariant="warning"
+        loading={closingParticipation}
+        disabled={closingParticipation}
       />
 
       {receipt && (

@@ -47,8 +47,13 @@ export function ItemHistoryTab({
         const itemTotal = calculateItemTotal(item);
         const deletionRequest = getDeletionRequest(item.id);
         const isItemOwner = item.participantId === currentUserId;
+        
+        // Verificar se o participante atual fechou sua participação
+        const currentParticipant = receipt.participants.find(p => p.id === currentUserId);
+        const isParticipantClosed = currentParticipant?.isClosed || false;
+        
         const canDelete = isCreator && !receipt.isClosed && !deletionRequest;
-        const canRequestDeletion = isItemOwner && !isCreator && !deletionRequest && !receipt.isClosed;
+        const canRequestDeletion = isItemOwner && !isCreator && !deletionRequest && !receipt.isClosed && !isParticipantClosed;
 
         return (
           <div

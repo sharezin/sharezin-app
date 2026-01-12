@@ -75,9 +75,7 @@ export function ConfirmModal({
   const handleConfirm = () => {
     if (!loading && !disabled) {
       onConfirm();
-      if (!loading) {
-        onClose();
-      }
+      // Não fecha o modal automaticamente - deixar o onConfirm controlar quando fechar
     }
   };
 
