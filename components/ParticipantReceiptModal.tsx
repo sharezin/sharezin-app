@@ -160,15 +160,15 @@ export function ParticipantReceiptModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-surface-alt rounded-lg p-6 mx-4 shadow-2xl"
+        className="w-full max-w-md bg-surface rounded-lg p-6 mx-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-700">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-strong">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-zinc-800 rounded-lg">
+            <div className="p-2 bg-primary rounded-lg">
               <svg
-                className="w-6 h-6 text-white"
+                className="w-6 h-6 text-text-inverse"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -182,13 +182,13 @@ export function ParticipantReceiptModal({
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Recibo do Participante</h2>
-              <p className="text-sm text-zinc-400">Recibo: {receipt.title}</p>
+              <h2 className="text-xl font-bold text-text-primary">Recibo do Participante</h2>
+              <p className="text-sm text-text-secondary">Recibo: {receipt.title}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-text-secondary hover:text-text-primary transition-colors"
             aria-label="Fechar"
           >
             <svg
@@ -208,23 +208,23 @@ export function ParticipantReceiptModal({
         </div>
 
         {/* Receipt Number and Date */}
-        <div className="mb-4 pb-4 border-b border-zinc-700">
+        <div className="mb-4 pb-4 border-b border-border-strong">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-400">Participante:</span>
-            <span className="text-white font-medium">{participantName}</span>
+            <span className="text-text-secondary">Participante:</span>
+            <span className="text-text-primary font-medium">{participantName}</span>
           </div>
           <div className="flex items-center justify-between text-sm mt-2">
-            <span className="text-zinc-400">Data:</span>
-            <span className="text-zinc-300">
+            <span className="text-text-secondary">Data:</span>
+            <span className="text-text-primary">
               {new Date(receipt.date).toLocaleDateString('pt-BR')}
             </span>
           </div>
         </div>
 
         {/* Items List */}
-        <div className="mb-4 pb-4 border-b border-zinc-700">
+        <div className="mb-4 pb-4 border-b border-border-strong">
           {participantItems.length === 0 ? (
-            <p className="text-zinc-400 text-sm text-center py-4">
+            <p className="text-text-muted text-sm text-center py-4">
               Nenhum item adicionado
             </p>
           ) : (
@@ -237,12 +237,12 @@ export function ParticipantReceiptModal({
                     className="flex items-center justify-between"
                   >
                     <div className="flex-1">
-                      <p className="text-white font-medium">{item.name}</p>
-                      <p className="text-zinc-400 text-sm">
+                      <p className="text-text-primary font-medium">{item.name}</p>
+                      <p className="text-text-secondary text-sm">
                         {item.quantity}x {formatCurrency(item.price)}
                       </p>
                     </div>
-                    <p className="text-white font-semibold">
+                    <p className="text-text-primary font-semibold">
                       {formatCurrency(itemTotal)}
                     </p>
                   </div>
@@ -254,40 +254,40 @@ export function ParticipantReceiptModal({
 
         {/* Subtotal */}
         {participantItemsTotal > 0 && (
-          <div className="mb-2 pb-2 border-b border-zinc-700">
+          <div className="mb-2 pb-2 border-b border-border-strong">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Subtotal (itens):</span>
-              <span className="text-zinc-300">{formatCurrency(participantItemsTotal)}</span>
+              <span className="text-text-secondary">Subtotal (itens):</span>
+              <span className="text-text-primary">{formatCurrency(participantItemsTotal)}</span>
             </div>
           </div>
         )}
 
         {/* Service Charge */}
         {participantServiceCharge > 0 && (
-          <div className="mb-2 pb-2 border-b border-zinc-700">
+          <div className="mb-2 pb-2 border-b border-border-strong">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">
+              <span className="text-text-secondary">
                 Taxa do garçom ({receipt.serviceChargePercent}%):
               </span>
-              <span className="text-zinc-300">{formatCurrency(participantServiceCharge)}</span>
+              <span className="text-text-primary">{formatCurrency(participantServiceCharge)}</span>
             </div>
           </div>
         )}
 
         {/* Cover */}
         {coverPerPerson > 0 && (
-          <div className="mb-4 pb-4 border-b border-zinc-700">
+          <div className="mb-4 pb-4 border-b border-border-strong">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Cover:</span>
-              <span className="text-zinc-300">{formatCurrency(coverPerPerson)}</span>
+              <span className="text-text-secondary">Cover:</span>
+              <span className="text-text-primary">{formatCurrency(coverPerPerson)}</span>
             </div>
           </div>
         )}
 
         {/* Total */}
         <div className="flex items-center justify-between pt-4">
-          <span className="text-lg font-bold text-white">Total</span>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-lg font-bold text-text-primary">Total</span>
+          <span className="text-2xl font-bold text-text-primary">
             {formatCurrency(participantTotal)}
           </span>
         </div>
@@ -296,7 +296,7 @@ export function ParticipantReceiptModal({
         <div className="flex gap-3 mt-6">
           <button
             onClick={generatePDF}
-            className="flex-1 px-4 py-3 rounded-lg bg-surface-alt text-white font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 rounded-lg bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
           >
             <svg
               className="w-5 h-5"
