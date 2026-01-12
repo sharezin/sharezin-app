@@ -3,27 +3,36 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'danger' | 'warning';
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'danger' | 'warning' | 'success';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   children: ReactNode;
 }
 
 export function Button({ 
   variant = 'primary', 
+  size = 'md',
   loading = false, 
   disabled,
   children, 
   className = '',
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2';
+  const sizeStyles = {
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-3',
+    lg: 'px-6 py-4 text-lg',
+  };
+  
+  const baseStyles = `${sizeStyles[size]} rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`;
   
   const variantStyles = {
     primary: 'bg-primary text-text-inverse hover:bg-primary-hover',
     secondary: 'border border-border text-text-primary hover:bg-secondary-hover',
     tertiary: 'bg-tertiary text-text-primary hover:bg-tertiary-hover',
-    danger: 'bg-error text-text-inverse hover:opacity-90',
+    danger: 'bg-red-500 text-text-inverse hover:bg-red-600',
     warning: 'bg-warning text-text-inverse hover:opacity-90',
+    success: 'bg-green-600 text-text-inverse hover:bg-green-700',
   };
 
   return (

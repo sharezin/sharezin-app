@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
+import { createNotification } from '@/lib/services/notificationService';
+import { getReceiptParticipantsWithUserId } from '@/lib/services/receiptDataService';
 
 // POST /api/receipts/[id]/close - Fechar recibo
 // Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
@@ -32,6 +34,13 @@ export async function POST(
       );
     }
 
+    // Buscar título do recibo antes de fechar
+    const { data: receiptData } = await supabase
+      .from('receipts')
+      .select('title')
+      .eq('id', receiptId)
+      .single();
+
     // Fechar recibo
     const { data: updatedReceipt, error } = await supabase
       .from('receipts')
@@ -48,6 +57,31 @@ export async function POST(
         { error: 'Internal Server Error', message: 'Erro ao fechar recibo' },
         { status: 500 }
       );
+    }
+
+    // Buscar todos os participantes do recibo com user_id e criar notificações
+    try {
+      const participantUserIds = await getReceiptParticipantsWithUserId(supabase, receiptId);
+      const receiptTitle = receiptData?.title || 'Recibo';
+
+      // Criar notificações para todos os participantes (exceto o criador)
+      const notificationPromises = participantUserIds
+        .filter(userId => userId !== user.id) // Excluir o criador
+        .map(userId =>
+          createNotification(supabase, {
+            userId,
+            type: 'receipt_closed',
+            title: 'Recibo fechado',
+            message: `O recibo ${receiptTitle} foi fechado`,
+            receiptId: receiptId,
+            relatedUserId: user.id,
+          })
+        );
+
+      await Promise.all(notificationPromises);
+    } catch (error) {
+      // Não falhar a operação principal se as notificações falharem
+      console.error('Erro ao criar notificações de recibo fechado:', error);
     }
 
     return NextResponse.json({ receipt: updatedReceipt });

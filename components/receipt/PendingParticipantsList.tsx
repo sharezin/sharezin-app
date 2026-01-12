@@ -47,7 +47,7 @@ export function PendingParticipantsList({
                 <Button
                   onClick={() => onAccept(pending.id)}
                   disabled={isDisabled}
-                  variant="primary"
+                  variant="success"
                   className="px-3 py-1 text-sm"
                   loading={acceptingId === pending.id}
                 >

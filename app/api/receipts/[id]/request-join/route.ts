@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
+import { createNotification } from '@/lib/services/notificationService';
 
 // POST /api/receipts/[id]/request-join - Solicitar entrada no recibo
 export async function POST(
@@ -22,7 +23,7 @@ export async function POST(
     // Verificar se o recibo existe
     const { data: receipt, error: receiptError } = await supabase
       .from('receipts')
-      .select('id, creator_id, is_closed')
+      .select('id, creator_id, is_closed, title')
       .eq('id', receiptId)
       .single();
 
@@ -104,6 +105,21 @@ export async function POST(
         { error: 'Internal Server Error', message: 'Erro ao criar solicitação de entrada' },
         { status: 500 }
       );
+    }
+
+    // Criar notificação para o criador do recibo
+    try {
+      await createNotification(supabase, {
+        userId: receipt.creator_id,
+        type: 'participant_request',
+        title: 'Nova solicitação de participação',
+        message: `${user.name} solicitou participar do recibo ${receipt.title}`,
+        receiptId: receiptId,
+        relatedUserId: user.id,
+      });
+    } catch (error) {
+      // Não falhar a operação principal se a notificação falhar
+      console.error('Erro ao criar notificação de solicitação de participação:', error);
     }
 
     return NextResponse.json(
