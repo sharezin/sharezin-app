@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useReceiptsContext } from '@/contexts/ReceiptsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { ReceiptCard } from '@/components/ui/ReceiptCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Receipt } from '@/types';
 import dynamic from 'next/dynamic';
 
@@ -27,6 +28,7 @@ export default function ReceiptsPage() {
   const [filter, setFilter] = useState<FilterType>('open');
   const [hasLoaded, setHasLoaded] = useState(false);
   const hasLoadedRef = useRef(false);
+  const isRefreshingRef = useRef(false);
   
   // ID e nome do usuário atual
   const currentUserId = user?.id || '';
@@ -40,20 +42,28 @@ export default function ReceiptsPage() {
     }
   }, [searchParams]);
 
+  // Função de refresh memoizada para evitar múltiplas chamadas
+  const handleRefresh = useCallback(async () => {
+    if (user?.id && !isRefreshingRef.current) {
+      isRefreshingRef.current = true;
+      try {
+        await loadReceipts(true); // Carrega todos os recibos incluindo fechados
+      } finally {
+        isRefreshingRef.current = false;
+      }
+    }
+  }, [user?.id, loadReceipts]);
+
   // Pull-to-refresh para atualizar recibos
   const { isRefreshing, pullDistance, pullProgress } = usePullToRefresh({
-    onRefresh: async () => {
-      if (user?.id) {
-        await loadReceipts(true); // Carrega todos os recibos incluindo fechados
-      }
-    },
+    onRefresh: handleRefresh,
     enabled: !!user?.id && !loading,
   });
 
   // Carrega recibos apenas se ainda não foram carregados (compartilhado com home)
   // Se já foram carregados na home, apenas usa os dados do contexto
   useEffect(() => {
-    if (user?.id && pathname === '/receipts' && !hasLoadedRef.current) {
+    if (user?.id && pathname === '/receipts' && !hasLoadedRef.current && !isRefreshingRef.current) {
       hasLoadedRef.current = true;
       setHasLoaded(false);
       // Só carrega se não houver recibos no contexto (não foram carregados na home)
@@ -65,7 +75,7 @@ export default function ReceiptsPage() {
         setHasLoaded(true);
       }
     }
-  }, [user?.id, pathname, loadReceipts, receipts.length]);
+  }, [user?.id, pathname, loadReceipts]);
 
   // Reset flag quando mudar de página ou usuário
   useEffect(() => {
@@ -76,9 +86,15 @@ export default function ReceiptsPage() {
   }, [pathname, user?.id]);
 
   // Recarrega recibos quando a página volta a ficar visível (navegação de volta)
+  // Mas não durante o pull-to-refresh
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user?.id && pathname === '/receipts') {
+      if (
+        document.visibilityState === 'visible' && 
+        user?.id && 
+        pathname === '/receipts' &&
+        !isRefreshingRef.current
+      ) {
         loadReceipts(true);
       }
     };
@@ -146,43 +162,11 @@ export default function ReceiptsPage() {
   return (
     <div className="min-h-screen bg-bg pb-20 relative">
       {/* Indicador de pull-to-refresh */}
-      {pullDistance > 0 && (
-        <div 
-          className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 transition-opacity duration-200"
-          style={{
-            transform: `translateY(${Math.min(pullDistance, 80)}px)`,
-            opacity: Math.min(pullProgress, 1),
-          }}
-        >
-          <div className="bg-surface-alt text-white px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2">
-            {isRefreshing ? (
-              <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className="text-sm font-medium">Atualizando...</span>
-              </>
-            ) : (
-              <>
-                <svg 
-                  className="h-5 w-5 transition-transform duration-200" 
-                  style={{ transform: `rotate(${pullProgress * 180}deg)` }}
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-                <span className="text-sm font-medium">
-                  {pullProgress >= 1 ? 'Solte para atualizar' : 'Puxe para atualizar'}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        pullProgress={pullProgress}
+        isRefreshing={isRefreshing}
+      />
       
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">

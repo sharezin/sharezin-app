@@ -101,7 +101,7 @@ export function ItemHistoryTab({
                     <Button
                       onClick={() => onApproveDeletion(deletionRequest.id)}
                       disabled={approvingDeletionRequestId !== null || rejectingDeletionRequestId !== null}
-                      variant="primary"
+                      variant="success"
                       className="px-3 py-1 text-sm"
                       loading={approvingDeletionRequestId === deletionRequest.id}
                     >

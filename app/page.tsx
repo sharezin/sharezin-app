@@ -13,6 +13,7 @@ import { ExpenseDistributionRadialChart } from '@/components/dashboard/ExpenseDi
 import { formatCurrency } from '@/lib/calculations';
 import { Receipt } from '@/types';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { NotificationIcon } from '@/components/ui/NotificationIcon';
 import dynamic from 'next/dynamic';
 
 const DynamicCreateOrJoinReceiptModal = dynamic(() => import('@/components/CreateOrJoinReceiptModal').then(mod => ({ default: mod.CreateOrJoinReceiptModal })), {
@@ -160,12 +161,17 @@ export default function Home() {
       
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text-primary mb-2">
-            Dashboard
-          </h1>
-          <p className="text-text-secondary">
-            Visão geral dos seus recibos
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-text-primary mb-2">
+                Dashboard
+              </h1>
+              <p className="text-text-secondary">
+                Visão geral dos seus recibos
+              </p>
+            </div>
+            <NotificationIcon />
+          </div>
         </div>
 
         {/* Alerta de Recibos Abertos */}

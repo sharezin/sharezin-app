@@ -36,3 +36,56 @@ export async function fetchReceiptData(
     deletionRequests: deletionRequestsResult.data || [],
   };
 }
+
+/**
+ * Busca o user_id de um participante
+ */
+export async function getParticipantUserId(
+  supabase: SupabaseClient,
+  participantId: string
+): Promise<string | null> {
+  const { data: participant, error } = await supabase
+    .from('participants')
+    .select('user_id')
+    .eq('id', participantId)
+    .single();
+
+  if (error || !participant) {
+    return null;
+  }
+
+  return participant.user_id;
+}
+
+/**
+ * Busca todos os participantes de um recibo com user_id (excluindo participantes sem user_id)
+ */
+export async function getReceiptParticipantsWithUserId(
+  supabase: SupabaseClient,
+  receiptId: string
+): Promise<string[]> {
+  const { data: receiptParticipants, error } = await supabase
+    .from('receipt_participants')
+    .select('participant_id')
+    .eq('receipt_id', receiptId);
+
+  if (error || !receiptParticipants || receiptParticipants.length === 0) {
+    return [];
+  }
+
+  const participantIds = receiptParticipants.map(rp => rp.participant_id);
+
+  const { data: participants, error: participantsError } = await supabase
+    .from('participants')
+    .select('user_id')
+    .in('id', participantIds)
+    .not('user_id', 'is', null);
+
+  if (participantsError || !participants) {
+    return [];
+  }
+
+  return participants
+    .map(p => p.user_id)
+    .filter((userId): userId is string => userId !== null);
+}

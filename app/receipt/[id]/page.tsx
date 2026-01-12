@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReceiptPermissions } from '@/hooks/useReceiptPermissions';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
+import { apiRequest } from '@/lib/api';
+import { NotificationType } from '@/types';
 import dynamic from 'next/dynamic';
 
 const ProductForm = dynamic(() => import('@/components/ProductForm').then(mod => ({ default: mod.ProductForm })), {
@@ -174,6 +176,37 @@ export default function ReceiptDetailPage() {
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
+      
+      // Buscar todos os participantes do recibo e criar notificações (exceto quem adicionou)
+      try {
+        const participantsResponse = await apiRequest<{ userIds: string[] }>(
+          `/api/receipts/${receipt.id}/participants/user-ids`
+        );
+        
+        const participantUserIds = participantsResponse.userIds.filter(
+          userId => userId !== currentUserId && userId // Excluir quem adicionou e valores nulos
+        );
+        
+        // Criar notificações para todos os participantes
+        const notificationPromises = participantUserIds.map(userId =>
+          apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId,
+              type: 'item_added' as NotificationType,
+              title: 'Novo item adicionado',
+              message: `${currentUserName} adicionou ${item.name} ao recibo ${receipt.title}`,
+              receiptId: receipt.id,
+              relatedUserId: currentUserId,
+            }),
+          })
+        );
+        
+        await Promise.all(notificationPromises);
+      } catch (error) {
+        // Não falhar a operação principal se as notificações falharem
+        console.error('Erro ao criar notificações de item adicionado:', error);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar produto. Tente novamente.';
       setAlertModal({
@@ -260,6 +293,27 @@ export default function ReceiptDetailPage() {
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
+      
+      // Criar notificação para o criador do recibo
+      if (receipt.creatorId) {
+        try {
+          await apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId: receipt.creatorId,
+              type: 'deletion_request' as NotificationType,
+              title: 'Solicitação de exclusão',
+              message: `${currentUserName} solicitou excluir o item ${item.name} do recibo ${receipt.title}`,
+              receiptId: receipt.id,
+              relatedUserId: currentUserId,
+            }),
+          });
+        } catch (error) {
+          // Não falhar a operação principal se a notificação falhar
+          console.error('Erro ao criar notificação de solicitação de exclusão:', error);
+        }
+      }
+      
       setAlertModal({
         isOpen: true,
         title: 'Sucesso',
@@ -296,6 +350,30 @@ export default function ReceiptDetailPage() {
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
+      
+      // Buscar user_id do participante que solicitou a exclusão e criar notificação
+      try {
+        const participantUserIdResponse = await apiRequest<{ userId: string | null }>(
+          `/api/participants/${request.participantId}/user-id`
+        );
+        
+        if (participantUserIdResponse.userId) {
+          await apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId: participantUserIdResponse.userId,
+              type: 'deletion_approved' as NotificationType,
+              title: 'Exclusão aprovada',
+              message: `Sua solicitação para excluir o item foi aprovada no recibo ${receipt.title}`,
+              receiptId: receipt.id,
+              relatedUserId: currentUserId,
+            }),
+          });
+        }
+      } catch (error) {
+        // Não falhar a operação principal se a notificação falhar
+        console.error('Erro ao criar notificação de exclusão aprovada:', error);
+      }
     } catch (error) {
       setAlertModal({
         isOpen: true,
@@ -311,6 +389,9 @@ export default function ReceiptDetailPage() {
   const handleRejectDeletion = async (requestId: string) => {
     if (!receipt || !isCreator) return;
 
+    const request = receipt.deletionRequests.find(req => req.id === requestId);
+    if (!request) return;
+
     setRejectingDeletionRequestId(requestId);
 
     const updatedReceipt: Receipt = {
@@ -321,6 +402,30 @@ export default function ReceiptDetailPage() {
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
+      
+      // Buscar user_id do participante que solicitou a exclusão e criar notificação
+      try {
+        const participantUserIdResponse = await apiRequest<{ userId: string | null }>(
+          `/api/participants/${request.participantId}/user-id`
+        );
+        
+        if (participantUserIdResponse.userId) {
+          await apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId: participantUserIdResponse.userId,
+              type: 'deletion_rejected' as NotificationType,
+              title: 'Exclusão rejeitada',
+              message: `Sua solicitação para excluir o item foi rejeitada no recibo ${receipt.title}`,
+              receiptId: receipt.id,
+              relatedUserId: currentUserId,
+            }),
+          });
+        }
+      } catch (error) {
+        // Não falhar a operação principal se a notificação falhar
+        console.error('Erro ao criar notificação de exclusão rejeitada:', error);
+      }
     } catch (error) {
       setAlertModal({
         isOpen: true,
@@ -364,6 +469,24 @@ export default function ReceiptDetailPage() {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
       
+      // Criar notificação para o participante aceito
+      try {
+        await apiRequest('/api/notifications', {
+          method: 'POST',
+          body: JSON.stringify({
+            userId: pendingParticipant.userId,
+            type: 'participant_approved' as NotificationType,
+            title: 'Solicitação aceita',
+            message: `Você foi aceito como participante do recibo ${receipt.title}`,
+            receiptId: receipt.id,
+            relatedUserId: currentUserId,
+          }),
+        });
+      } catch (error) {
+        // Não falhar a operação principal se a notificação falhar
+        console.error('Erro ao criar notificação de participante aceito:', error);
+      }
+      
       setAlertModal({
         isOpen: true,
         title: 'Sucesso',
@@ -398,7 +521,25 @@ export default function ReceiptDetailPage() {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
       
+      // Criar notificação para o participante rejeitado
       if (pendingParticipant) {
+        try {
+          await apiRequest('/api/notifications', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId: pendingParticipant.userId,
+              type: 'participant_rejected' as NotificationType,
+              title: 'Solicitação rejeitada',
+              message: `Sua solicitação para participar do recibo ${receipt.title} foi rejeitada`,
+              receiptId: receipt.id,
+              relatedUserId: currentUserId,
+            }),
+          });
+        } catch (error) {
+          // Não falhar a operação principal se a notificação falhar
+          console.error('Erro ao criar notificação de participante rejeitado:', error);
+        }
+        
         setAlertModal({
           isOpen: true,
           title: 'Participante rejeitado',

@@ -51,3 +51,26 @@ export interface Receipt {
   createdAt: string;
   updatedAt: string;
 }
+
+export type NotificationType = 
+  | 'participant_request'
+  | 'participant_approved'
+  | 'participant_rejected'
+  | 'deletion_request'
+  | 'deletion_approved'
+  | 'deletion_rejected'
+  | 'receipt_closed'
+  | 'item_added';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  receiptId?: string;
+  relatedUserId?: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

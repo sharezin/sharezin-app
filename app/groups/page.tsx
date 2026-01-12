@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGroups } from '@/hooks/useGroups';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Group, Participant } from '@/types';
 import { saveParticipant, deleteParticipant } from '@/lib/storage';
 import { ConfirmModal, PromptModal } from '@/components/Modal';
 
 export default function GroupsPage() {
   const router = useRouter();
-  const { groups, loading, createGroup, updateGroup, removeGroup, getGroupParticipants } = useGroups();
+  const { groups, loading, createGroup, updateGroup, removeGroup, getGroupParticipants, refreshGroups } = useGroups();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -27,6 +29,17 @@ export default function GroupsPage() {
   }>({
     isOpen: false,
     groupId: null,
+  });
+
+  // Função de refresh memoizada para pull-to-refresh
+  const handleRefresh = useCallback(async () => {
+    refreshGroups();
+  }, [refreshGroups]);
+
+  // Pull-to-refresh para atualizar grupos
+  const { isRefreshing, pullDistance, pullProgress } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    enabled: !loading,
   });
 
   const handleCreateGroup = () => {
@@ -91,7 +104,14 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-20">
+    <div className="min-h-screen bg-bg pb-20 relative">
+      {/* Indicador de pull-to-refresh */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        pullProgress={pullProgress}
+        isRefreshing={isRefreshing}
+      />
+      
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-text-primary mb-2">
