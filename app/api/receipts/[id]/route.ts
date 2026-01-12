@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 import { checkReceiptAccess } from '@/lib/services/receiptPermissionService';
-import { fetchReceiptData } from '@/lib/services/receiptDataService';
+import { fetchReceiptData, getReceiptParticipantsWithUserId } from '@/lib/services/receiptDataService';
 import { upsertReceiptParticipants, upsertPendingParticipants, upsertDeletionRequests, upsertReceiptItems } from '@/lib/services/receiptService';
+import { createNotification } from '@/lib/services/notificationService';
 
 // GET /api/receipts/[id] - Buscar recibo por ID
 // Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
@@ -168,8 +169,54 @@ export async function PUT(
       await upsertDeletionRequests(supabase, receiptId, body.deletionRequests);
     }
 
+    // Processar itens e detectar novos itens adicionados
+    let newItems: any[] = [];
     if (body.items !== undefined && Array.isArray(body.items)) {
-      await upsertReceiptItems(supabase, receiptId, body.items);
+      const result = await upsertReceiptItems(supabase, receiptId, body.items);
+      newItems = result.newItems;
+      
+      // Se houver novos itens, criar notificações para os participantes
+      if (newItems.length > 0) {
+        try {
+          // Buscar informações do recibo e do usuário atual
+          const { data: receiptInfo } = await supabase
+            .from('receipts')
+            .select('title')
+            .eq('id', receiptId)
+            .single();
+          
+          const { data: currentUser } = await supabase
+            .from('sharezin_users')
+            .select('name')
+            .eq('id', user.id)
+            .single();
+          
+          // Buscar todos os participantes do recibo com user_id
+          const participantUserIds = await getReceiptParticipantsWithUserId(supabase, receiptId);
+          
+          // Filtrar para excluir o usuário que adicionou o item
+          const userIdsToNotify = participantUserIds.filter(userId => userId !== user.id);
+          
+          // Criar notificações para cada novo item
+          for (const newItem of newItems) {
+            const notificationPromises = userIdsToNotify.map(userId =>
+              createNotification(supabase, {
+                userId,
+                type: 'item_added',
+                title: 'Novo item adicionado',
+                message: `${currentUser?.name || 'Alguém'} adicionou ${newItem.name} ao recibo ${receiptInfo?.title || 'recibo'}`,
+                receiptId: receiptId,
+                relatedUserId: user.id,
+              })
+            );
+            
+            await Promise.all(notificationPromises);
+          }
+        } catch (error) {
+          // Não falhar a operação principal se as notificações falharem
+          console.error('Erro ao criar notificações de item adicionado:', error);
+        }
+      }
     }
 
     // Buscar dados atualizados para retornar

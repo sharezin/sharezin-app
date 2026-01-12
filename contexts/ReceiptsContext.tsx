@@ -1,9 +1,11 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { Receipt } from '@/types';
 import { apiRequest } from '@/lib/api';
 import { transformReceiptFromApi, ApiReceipt } from '@/lib/transformers/receiptTransformer';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReceiptsContextType {
   receipts: Receipt[];
@@ -16,9 +18,13 @@ interface ReceiptsContextType {
 const ReceiptsContext = createContext<ReceiptsContextType | undefined>(undefined);
 
 export function ReceiptsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Refs para gerenciar Realtime
+  const channelRef = useRef<any>(null);
 
   const loadReceipts = useCallback(async (includeClosed: boolean = false) => {
     // Verifica se há token de autenticação antes de fazer a requisição
@@ -62,6 +68,87 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
   const refreshReceipts = useCallback(async () => {
     await loadReceipts(true);
   }, [loadReceipts]);
+
+  // Configurar Realtime para recibos quando usuário estiver autenticado
+  useEffect(() => {
+    if (!user?.id) {
+      setReceipts([]);
+      return;
+    }
+
+    // Limpar conexão anterior
+    if (channelRef.current) {
+      supabase?.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Carregar recibos iniciais
+    loadReceipts(false);
+
+    // Tentar conectar ao Realtime para recibos
+    if (supabase) {
+      try {
+        const channel = supabase
+          .channel(`receipts:${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipts',
+              filter: `creator_id=eq.${user.id}`,
+            },
+            async (payload: { eventType: string; new?: any; old?: any }) => {
+              // Recarregar recibos quando houver mudanças
+              await loadReceipts(false);
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipt_items',
+            },
+            async () => {
+              // Recarregar recibos quando itens mudarem
+              await loadReceipts(false);
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'receipt_participants',
+            },
+            async () => {
+              // Recarregar recibos quando participantes mudarem
+              await loadReceipts(false);
+            }
+          )
+          .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Realtime conectado para recibos');
+            } else {
+              console.warn('Erro na conexão Realtime de recibos:', status);
+            }
+          });
+
+        channelRef.current = channel;
+      } catch (err) {
+        console.error('Erro ao configurar Realtime de recibos:', err);
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (channelRef.current) {
+        supabase?.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [user?.id, loadReceipts]);
 
   return (
     <ReceiptsContext.Provider

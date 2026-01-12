@@ -243,12 +243,13 @@ export async function upsertDeletionRequests(
 
 /**
  * Upsert items no recibo
+ * Retorna: { deletedItemIds: string[], newItems: ReceiptItem[] }
  */
 export async function upsertReceiptItems(
   supabase: SupabaseClient,
   receiptId: string,
   items: ReceiptItem[]
-): Promise<string[]> {
+): Promise<{ deletedItemIds: string[]; newItems: ReceiptItem[] }> {
   // Buscar itens existentes
   const { data: existingItems } = await supabase
     .from('receipt_items')
@@ -257,6 +258,9 @@ export async function upsertReceiptItems(
 
   const existingItemIds = new Set((existingItems || []).map((item: { id: string }) => item.id));
   const newItemIds = new Set(items.map(item => item.id));
+
+  // Identificar novos itens (que não existiam antes)
+  const newItems = items.filter(item => !existingItemIds.has(item.id));
 
   // Deletar itens que não estão mais na lista
   const itemsToDelete = Array.from(existingItemIds).filter(id => !newItemIds.has(id));
@@ -292,7 +296,7 @@ export async function upsertReceiptItems(
       .select();
   }
 
-  return itemsToDelete;
+  return { deletedItemIds: itemsToDelete, newItems };
 }
 
 /**
