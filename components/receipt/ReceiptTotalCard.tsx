@@ -18,7 +18,7 @@ export function ReceiptTotalCard({ receipt, receiptTotal }: ReceiptTotalCardProp
     try {
       await generateReceiptPDF(receipt);
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
+      // Erro ao gerar PDF
     }
   };
 

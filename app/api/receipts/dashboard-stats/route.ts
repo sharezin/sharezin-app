@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
       .eq('is_closed', true);
 
     if (periodError) {
-      console.error('Error fetching expenses by period:', periodError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao buscar gastos por período' },
         { status: 500 }
@@ -44,7 +43,6 @@ export async function GET(request: NextRequest) {
       const period = expense.period_month;
       // Ignorar períodos vazios ou nulos
       if (!period || period.trim() === '') {
-        console.warn('Período vazio encontrado:', expense);
         return;
       }
       
@@ -80,8 +78,7 @@ export async function GET(request: NextRequest) {
       .like('period_day', `${year}%`); // Filtra por ano
 
     if (dayError) {
-      console.error('Error fetching expenses by day:', dayError);
-      // Não falhar a requisição, apenas logar o erro
+      // Não falhar a requisição se houver erro ao buscar por dia
     }
 
     // Agregar por dia
@@ -176,7 +173,6 @@ export async function GET(request: NextRequest) {
       expenseDistribution: expenseDistributionArray,
     }, { headers });
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

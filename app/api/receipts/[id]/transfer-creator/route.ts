@@ -127,7 +127,6 @@ export async function PUT(
       .eq('id', receiptId);
 
     if (updateError) {
-      console.error('Erro ao transferir criador:', updateError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao transferir criador' },
         { status: 500 }
@@ -157,7 +156,6 @@ export async function PUT(
       });
     } catch (error) {
       // Não falhar a operação principal se as notificações falharem
-      console.error('Erro ao criar notificações de transferência:', error);
     }
 
     // Buscar recibo atualizado
@@ -177,21 +175,6 @@ export async function PUT(
     // Buscar dados relacionados
     const receiptData = await fetchReceiptData(supabase, receiptId);
 
-    // Log para verificar dados antes de retornar
-    console.log('[TransferCreator API] Dados antes de retornar:', {
-      receiptId,
-      oldCreatorId: user.id,
-      newCreatorId: newCreatorUserId,
-      participants: receiptData.participants.map((p: any) => ({
-        id: p.id,
-        user_id: p.user_id,
-        name: p.name,
-        is_closed: p.is_closed,
-        isOldCreator: p.user_id === user.id,
-        isNewCreator: p.user_id === newCreatorUserId,
-      })),
-    });
-
     // Combinar recibo com dados relacionados
     const fullReceipt = {
       ...updatedReceiptData,
@@ -205,7 +188,6 @@ export async function PUT(
 
     return NextResponse.json({ receipt: updatedReceipt });
   } catch (error) {
-    console.error('Erro ao transferir criador:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

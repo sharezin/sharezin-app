@@ -42,7 +42,7 @@ export function ExpensesByPeriodChart({ data, dailyData = [], onYearChange }: Ex
       try {
         await onYearChange(year);
       } catch (error) {
-        console.error('Erro ao buscar dados do ano:', error);
+        // Erro ao buscar dados do ano
       } finally {
         setLoadingYear(false);
       }
@@ -111,7 +111,7 @@ export function ExpensesByPeriodChart({ data, dailyData = [], onYearChange }: Ex
         const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
         label = `${monthNames[month - 1]}/${year}`;
       } catch (error) {
-        console.warn('Erro ao formatar período:', item.period, error);
+        // Erro ao formatar período - usar período original
       }
 
       return {

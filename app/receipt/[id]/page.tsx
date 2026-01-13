@@ -38,6 +38,7 @@ import { PendingParticipantsList } from '@/components/receipt/PendingParticipant
 import { ReceiptTabs } from '@/components/receipt/ReceiptTabs';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Receipt, ReceiptItem, Participant, DeletionRequest, PendingParticipant } from '@/types';
+import { transformToCamelCase } from '@/lib/api';
 
 export default function ReceiptDetailPage() {
   const params = useParams();
@@ -108,18 +109,6 @@ export default function ReceiptDetailPage() {
     currentUserId,
   });
 
-  // Log para debug de permissões
-  useEffect(() => {
-    if (receipt && currentUserId) {
-      console.log('[ReceiptPage] Verificação de permissões:', {
-        receiptId: receipt.id,
-        receiptCreatorId: receipt.creatorId,
-        currentUserId,
-        isCreator,
-        match: receipt.creatorId === currentUserId,
-      });
-    }
-  }, [receipt?.id, receipt?.creatorId, currentUserId, isCreator]);
 
   const loadReceipt = useCallback(async () => {
     const id = params.id as string;
@@ -133,6 +122,168 @@ export default function ReceiptDetailPage() {
     setReceipt(loadedReceipt);
     setLoading(false);
   }, [params.id, getReceiptById, router]);
+
+  // Funções auxiliares para atualizações granulares via Realtime
+  const updateReceiptItem = useCallback((itemData: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    try {
+      setReceipt(prev => {
+        if (!prev) return prev;
+        
+        const transformedItem = transformToCamelCase<ReceiptItem>(itemData);
+        
+        if (eventType === 'INSERT') {
+          // Verificar se o item já existe para evitar duplicatas
+          if (prev.items.some(i => i.id === transformedItem.id)) {
+            return prev;
+          }
+          return { ...prev, items: [...prev.items, transformedItem] };
+        } else if (eventType === 'UPDATE') {
+          return {
+            ...prev,
+            items: prev.items.map(i => i.id === transformedItem.id ? transformedItem : i)
+          };
+        } else { // DELETE
+          return {
+            ...prev,
+            items: prev.items.filter(i => i.id !== itemData.id)
+          };
+        }
+      });
+    } catch (error) {
+      // Fallback: recarregar recibo se a atualização granular falhar
+      loadReceipt();
+    }
+  }, [loadReceipt]);
+
+  const updateParticipant = useCallback(async (participantData: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    try {
+      if (eventType === 'INSERT') {
+        // Para INSERT, precisamos buscar os dados completos do participante
+        // pois receipt_participants só tem o participant_id
+        if (!supabase) return;
+        
+        const { data: participant, error } = await supabase
+          .from('participants')
+          .select('*')
+          .eq('id', participantData.participant_id || participantData.id)
+          .single();
+        
+        if (error) {
+          loadReceipt();
+          return;
+        }
+        
+        if (participant) {
+          const transformedParticipant = transformToCamelCase<Participant>(participant);
+          setReceipt(prev => {
+            if (!prev) return prev;
+            // Verificar se já existe
+            if (prev.participants.some(p => p.id === transformedParticipant.id)) {
+              return prev;
+            }
+            return { ...prev, participants: [...prev.participants, transformedParticipant] };
+          });
+        }
+      } else if (eventType === 'UPDATE') {
+        const transformedParticipant = transformToCamelCase<Participant>(participantData);
+        setReceipt(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            participants: prev.participants.map(p => 
+              p.id === transformedParticipant.id ? transformedParticipant : p
+            )
+          };
+        });
+      } else { // DELETE
+        setReceipt(prev => {
+          if (!prev) return prev;
+          const participantId = participantData.participant_id || participantData.id;
+          return {
+            ...prev,
+            participants: prev.participants.filter(p => p.id !== participantId)
+          };
+        });
+      }
+    } catch (error) {
+      loadReceipt();
+    }
+  }, [loadReceipt]);
+
+  const updatePendingParticipant = useCallback((pendingParticipantData: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    try {
+      setReceipt(prev => {
+        if (!prev) return prev;
+        
+        const transformedPendingParticipant = transformToCamelCase<PendingParticipant>(pendingParticipantData);
+        
+        if (eventType === 'INSERT') {
+          // Verificar se já existe
+          if (prev.pendingParticipants.some(p => p.id === transformedPendingParticipant.id)) {
+            return prev;
+          }
+          return { ...prev, pendingParticipants: [...prev.pendingParticipants, transformedPendingParticipant] };
+        } else if (eventType === 'UPDATE') {
+          return {
+            ...prev,
+            pendingParticipants: prev.pendingParticipants.map(p => 
+              p.id === transformedPendingParticipant.id ? transformedPendingParticipant : p
+            )
+          };
+        } else { // DELETE
+          return {
+            ...prev,
+            pendingParticipants: prev.pendingParticipants.filter(p => p.id !== pendingParticipantData.id)
+          };
+        }
+      });
+    } catch (error) {
+      loadReceipt();
+    }
+  }, [loadReceipt]);
+
+  const updateDeletionRequest = useCallback((deletionRequestData: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    try {
+      setReceipt(prev => {
+        if (!prev) return prev;
+        
+        const transformedDeletionRequest = transformToCamelCase<DeletionRequest>(deletionRequestData);
+        
+        if (eventType === 'INSERT') {
+          // Verificar se já existe
+          if (prev.deletionRequests.some(d => d.id === transformedDeletionRequest.id)) {
+            return prev;
+          }
+          return { ...prev, deletionRequests: [...prev.deletionRequests, transformedDeletionRequest] };
+        } else if (eventType === 'UPDATE') {
+          return {
+            ...prev,
+            deletionRequests: prev.deletionRequests.map(d => 
+              d.id === transformedDeletionRequest.id ? transformedDeletionRequest : d
+            )
+          };
+        } else { // DELETE
+          return {
+            ...prev,
+            deletionRequests: prev.deletionRequests.filter(d => d.id !== deletionRequestData.id)
+          };
+        }
+      });
+    } catch (error) {
+      loadReceipt();
+    }
+  }, [loadReceipt]);
+
+  const updateReceiptMetadata = useCallback((receiptData: Partial<Receipt>) => {
+    try {
+      setReceipt(prev => {
+        if (!prev) return prev;
+        return { ...prev, ...receiptData };
+      });
+    } catch (error) {
+      loadReceipt();
+    }
+  }, [loadReceipt]);
 
   useEffect(() => {
     // Só carregar o recibo quando o usuário estiver disponível
@@ -163,79 +314,190 @@ export default function ReceiptDetailPage() {
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'UPDATE',
               schema: 'public',
               table: 'receipts',
               filter: `id=eq.${receipt.id}`,
             },
-            async () => {
-              // Recarregar recibo quando houver mudanças
-              await loadReceipt();
+            (payload: { new: any; old: any }) => {
+              // Atualizar apenas campos do recibo sem recarregar tudo
+              const updatedData = transformToCamelCase<Partial<Receipt>>(payload.new);
+              updateReceiptMetadata(updatedData);
             }
           )
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'INSERT',
               schema: 'public',
               table: 'receipt_items',
               filter: `receipt_id=eq.${receipt.id}`,
             },
-            async () => {
-              // Recarregar recibo quando itens mudarem
-              await loadReceipt();
+            (payload: { new: any }) => {
+              // Adicionar novo item granularmente
+              updateReceiptItem(payload.new, 'INSERT');
             }
           )
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'receipt_items',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { new: any }) => {
+              // Atualizar item existente granularmente
+              updateReceiptItem(payload.new, 'UPDATE');
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'receipt_items',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { old: any }) => {
+              // Remover item granularmente
+              updateReceiptItem(payload.old, 'DELETE');
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
               schema: 'public',
               table: 'receipt_participants',
               filter: `receipt_id=eq.${receipt.id}`,
             },
-            async () => {
-              // Recarregar recibo quando participantes mudarem
-              await loadReceipt();
+            async (payload: { new: any }) => {
+              // Adicionar novo participante granularmente
+              await updateParticipant(payload.new, 'INSERT');
             }
           )
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'DELETE',
+              schema: 'public',
+              table: 'receipt_participants',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            async (payload: { old: any }) => {
+              // Remover participante granularmente
+              await updateParticipant(payload.old, 'DELETE');
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'participants',
+            },
+            async (payload: { new: any }) => {
+              // Verificar se o participante atualizado pertence a este recibo
+              setReceipt(prev => {
+                if (!prev) return prev;
+                const participantExists = prev.participants.some(p => p.id === payload.new.id);
+                if (!participantExists) return prev;
+                
+                // Atualizar participante granularmente
+                const transformedParticipant = transformToCamelCase<Participant>(payload.new);
+                return {
+                  ...prev,
+                  participants: prev.participants.map(p => 
+                    p.id === transformedParticipant.id ? transformedParticipant : p
+                  )
+                };
+              });
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
               schema: 'public',
               table: 'pending_participants',
               filter: `receipt_id=eq.${receipt.id}`,
             },
-            async () => {
-              // Recarregar recibo quando participantes pendentes mudarem
-              await loadReceipt();
+            (payload: { new: any }) => {
+              // Adicionar novo participante pendente granularmente
+              updatePendingParticipant(payload.new, 'INSERT');
             }
           )
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'pending_participants',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { new: any }) => {
+              // Atualizar participante pendente granularmente
+              updatePendingParticipant(payload.new, 'UPDATE');
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'pending_participants',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { old: any }) => {
+              // Remover participante pendente granularmente
+              updatePendingParticipant(payload.old, 'DELETE');
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
               schema: 'public',
               table: 'deletion_requests',
               filter: `receipt_id=eq.${receipt.id}`,
             },
-            async () => {
-              // Recarregar recibo quando solicitações de exclusão mudarem
-              await loadReceipt();
+            (payload: { new: any }) => {
+              // Adicionar nova solicitação de exclusão granularmente
+              updateDeletionRequest(payload.new, 'INSERT');
             }
           )
-          .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {
-            if (status === 'SUBSCRIBED') {
-              console.log('Realtime conectado para recibo:', receipt.id);
-            } else {
-              console.warn('Erro na conexão Realtime do recibo:', status);
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'deletion_requests',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { new: any }) => {
+              // Atualizar solicitação de exclusão granularmente
+              updateDeletionRequest(payload.new, 'UPDATE');
             }
-          });
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'deletion_requests',
+              filter: `receipt_id=eq.${receipt.id}`,
+            },
+            (payload: { old: any }) => {
+              // Remover solicitação de exclusão granularmente
+              updateDeletionRequest(payload.old, 'DELETE');
+            }
+          )
+          .subscribe();
 
         channelRef.current = channel;
       } catch (err) {
-        console.error('Erro ao configurar Realtime do recibo:', err);
+        // Erro ao configurar Realtime - fallback será usado
       }
     }
 
@@ -246,7 +508,7 @@ export default function ReceiptDetailPage() {
         channelRef.current = null;
       }
     };
-  }, [receipt?.id, user?.id, loadReceipt]);
+  }, [receipt?.id, user?.id, updateReceiptItem, updateParticipant, updatePendingParticipant, updateDeletionRequest, updateReceiptMetadata]);
 
   // Fallback: Recarrega o recibo quando a página volta a ficar visível (caso Realtime não esteja disponível)
   useEffect(() => {
@@ -422,7 +684,6 @@ export default function ReceiptDetailPage() {
           });
         } catch (error) {
           // Não falhar a operação principal se a notificação falhar
-          console.error('Erro ao criar notificação de solicitação de exclusão:', error);
         }
       }
       
@@ -484,7 +745,6 @@ export default function ReceiptDetailPage() {
         }
       } catch (error) {
         // Não falhar a operação principal se a notificação falhar
-        console.error('Erro ao criar notificação de exclusão aprovada:', error);
       }
     } catch (error) {
       setAlertModal({
@@ -536,7 +796,6 @@ export default function ReceiptDetailPage() {
         }
       } catch (error) {
         // Não falhar a operação principal se a notificação falhar
-        console.error('Erro ao criar notificação de exclusão rejeitada:', error);
       }
     } catch (error) {
       setAlertModal({
@@ -596,7 +855,6 @@ export default function ReceiptDetailPage() {
         });
       } catch (error) {
         // Não falhar a operação principal se a notificação falhar
-        console.error('Erro ao criar notificação de participante aceito:', error);
       }
       
       setAlertModal({
@@ -649,7 +907,6 @@ export default function ReceiptDetailPage() {
           });
         } catch (error) {
           // Não falhar a operação principal se a notificação falhar
-          console.error('Erro ao criar notificação de participante rejeitado:', error);
         }
         
         setAlertModal({
@@ -823,35 +1080,9 @@ export default function ReceiptDetailPage() {
   };
 
   const handleTransferCreatorComplete = async (updatedReceipt: Receipt) => {
-    // Log para verificar se há alguma lógica que fecha participação
-    console.log('[TransferCreator] Recebendo recibo atualizado após transferência:', {
-      receiptId: updatedReceipt.id,
-      creatorId: updatedReceipt.creatorId,
-      currentUserId,
-      isNewCreator: updatedReceipt.creatorId === currentUserId,
-      participants: updatedReceipt.participants.map(p => ({
-        id: p.id,
-        userId: p.userId,
-        name: p.name,
-        isClosed: p.isClosed,
-        isCurrentUser: p.id === currentUserId || p.userId === currentUserId,
-        isCreator: p.userId === updatedReceipt.creatorId,
-      })),
-    });
-    
-    // Atualizar o recibo no estado
     setReceipt(updatedReceipt);
     setShowTransferCreatorModal(false);
     setTransferringCreator(false);
-    
-    // Log após atualizar o estado para verificar se as permissões foram atualizadas
-    setTimeout(() => {
-      console.log('[TransferCreator] Estado após atualização:', {
-        receiptCreatorId: updatedReceipt.creatorId,
-        currentUserId,
-        shouldBeCreator: updatedReceipt.creatorId === currentUserId,
-      });
-    }, 100);
   };
 
   // Ordena itens por data de adição (mais recente primeiro)

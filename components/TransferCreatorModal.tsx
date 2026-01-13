@@ -69,19 +69,6 @@ export function TransferCreatorModal({
       );
 
       const updatedReceipt = transformReceiptFromApi(response.receipt);
-      
-      // Log para verificar dados retornados pela API
-      console.log('[TransferCreatorModal] Dados retornados pela API:', {
-        receiptId: updatedReceipt.id,
-        creatorId: updatedReceipt.creatorId,
-        participants: updatedReceipt.participants.map(p => ({
-          id: p.id,
-          userId: p.userId,
-          name: p.name,
-          isClosed: p.isClosed,
-        })),
-      });
-      
       onTransferComplete(updatedReceipt);
 
       setAlertModal({

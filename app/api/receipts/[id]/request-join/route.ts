@@ -119,7 +119,6 @@ export async function POST(
       });
     } catch (error) {
       // Não falhar a operação principal se a notificação falhar
-      console.error('Erro ao criar notificação de solicitação de participação:', error);
     }
 
     return NextResponse.json(

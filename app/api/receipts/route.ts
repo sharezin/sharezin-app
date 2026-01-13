@@ -158,13 +158,6 @@ export async function POST(request: NextRequest) {
       })
       .select('id, title, date, creator_id, invite_code, service_charge_percent, cover, total, is_closed, created_at, updated_at')
       .single();
-    
-    console.log('[CreateReceipt] Recibo criado:', {
-      id: receipt?.id,
-      creator_id: receipt?.creator_id,
-      user_id: user.id,
-      match: receipt?.creator_id === user.id,
-    });
 
     if (receiptError || !receipt) {
       return NextResponse.json(
@@ -187,26 +180,15 @@ export async function POST(request: NextRequest) {
       // Usar participante existente, mas garantir que is_closed seja false para o novo recibo
       creatorParticipantId = existingCreatorParticipant.id;
       
-      console.log('[CreateReceipt] Participante existente encontrado:', {
-        id: creatorParticipantId,
-        is_closed: existingCreatorParticipant.is_closed,
-      });
-      
       // Se o participante existente está fechado, reabrir para o novo recibo
       if (existingCreatorParticipant.is_closed) {
-        const { error: updateError } = await supabase
+        await supabase
           .from('participants')
           .update({
             is_closed: false,
             updated_at: new Date().toISOString(),
           })
           .eq('id', creatorParticipantId);
-        
-        if (updateError) {
-          console.error('[CreateReceipt] Erro ao reabrir participante:', updateError);
-        } else {
-          console.log('[CreateReceipt] Participante reaberto com sucesso');
-        }
       }
     } else {
       // Criar novo participante para o criador
@@ -227,15 +209,10 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (participantError || !newParticipant) {
-        console.error('[CreateReceipt] Erro ao criar participante para o criador:', participantError);
         // Se falhar, não adicionar como participante agora (será criado quando adicionar primeiro item)
         creatorParticipantId = '';
       } else {
         creatorParticipantId = newParticipant.id;
-        console.log('[CreateReceipt] Novo participante criado:', {
-          id: creatorParticipantId,
-          is_closed: newParticipant.is_closed,
-        });
       }
     }
 
@@ -248,23 +225,16 @@ export async function POST(request: NextRequest) {
           participant_id: creatorParticipantId,
         });
       
-      if (receiptParticipantError) {
-        console.error('[CreateReceipt] Erro ao adicionar participante ao recibo:', receiptParticipantError);
-      } else {
-        console.log('[CreateReceipt] Participante adicionado ao recibo com sucesso');
-        
+      if (!receiptParticipantError) {
         // Garantir que o participante está aberto após adicionar ao recibo
         // Isso é necessário porque pode haver triggers ou outras lógicas que modificam o estado
-        const { data: participantAfterInsert, error: checkError } = await supabase
+        const { data: participantAfterInsert } = await supabase
           .from('participants')
           .select('is_closed')
           .eq('id', creatorParticipantId)
           .single();
         
-        if (checkError) {
-          console.error('[CreateReceipt] Erro ao verificar estado do participante:', checkError);
-        } else if (participantAfterInsert?.is_closed) {
-          console.log('[CreateReceipt] Participante estava fechado após inserção, reabrindo...');
+        if (participantAfterInsert?.is_closed) {
           await supabase
             .from('participants')
             .update({
@@ -300,20 +270,6 @@ export async function POST(request: NextRequest) {
     // Buscar dados completos do recibo incluindo o participante criador
     const receiptData = await fetchReceiptData(supabase, receipt.id);
 
-    // Log para verificar o estado dos participantes após buscar os dados
-    console.log('[CreateReceipt] Dados do recibo antes de retornar:', {
-      receiptId: receipt.id,
-      receiptCreatorId: receipt.creator_id,
-      userCreatorId: user.id,
-      participants: receiptData.participants.map((p: any) => ({
-        id: p.id,
-        user_id: p.user_id,
-        name: p.name,
-        is_closed: p.is_closed,
-        isCreator: p.user_id === user.id,
-      })),
-    });
-
     // Garantir que creator_id está presente no objeto retornado
     // Se por algum motivo o creator_id não foi retornado, usar o user.id
     const receiptToReturn = {
@@ -324,12 +280,6 @@ export async function POST(request: NextRequest) {
       items: receiptData.items,
       deletion_requests: receiptData.deletionRequests,
     };
-
-    console.log('[CreateReceipt] Recibo final antes de retornar:', {
-      id: receiptToReturn.id,
-      creator_id: receiptToReturn.creator_id,
-      hasCreatorId: !!receiptToReturn.creator_id,
-    });
 
     return NextResponse.json(
       {

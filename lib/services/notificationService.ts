@@ -30,7 +30,6 @@ export async function createNotification(
     });
 
   if (error) {
-    console.error('Error creating notification:', error);
     throw new Error('Erro ao criar notificação');
   }
 }

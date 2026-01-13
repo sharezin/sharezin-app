@@ -81,7 +81,6 @@ export async function POST(
       await Promise.all(notificationPromises);
     } catch (error) {
       // Não falhar a operação principal se as notificações falharem
-      console.error('Erro ao criar notificações de recibo fechado:', error);
     }
 
     return NextResponse.json({ receipt: updatedReceipt });

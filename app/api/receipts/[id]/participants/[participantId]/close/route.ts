@@ -83,7 +83,6 @@ export async function POST(
       .eq('id', participantId);
 
     if (updateError) {
-      console.error('Erro ao fechar participação:', updateError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao fechar participação' },
         { status: 500 }
@@ -120,7 +119,6 @@ export async function POST(
 
     return NextResponse.json({ receipt: updatedReceipt });
   } catch (error) {
-    console.error('Erro ao fechar participação:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao fechar participação' },
       { status: 500 }

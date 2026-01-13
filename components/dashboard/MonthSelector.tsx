@@ -58,7 +58,7 @@ export function MonthSelector({
       // Atualizar ano
       onYearChange(newYear);
     } catch (error) {
-      console.error('Erro ao mudar ano:', error);
+      // Erro ao mudar ano
     }
   };
 
@@ -66,7 +66,7 @@ export function MonthSelector({
     try {
       onMonthChange(value === 'all' ? null : value);
     } catch (error) {
-      console.error('Erro ao mudar mês:', error);
+      // Erro ao mudar mês
     }
   };
 
