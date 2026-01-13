@@ -25,7 +25,7 @@ export default function Home() {
   const pathname = usePathname();
   const { receipts, loading, loadReceipts } = useReceiptsContext();
   const { user } = useAuth();
-  const { stats: dashboardStats, loading: statsLoading, refetch: refetchStats } = useDashboardStats();
+  const { stats: dashboardStats, loading: statsLoading, refetch: refetchStats, fetchYear, invalidateCache: invalidateDashboardCache } = useDashboardStats();
   const [showCreateOrJoinModal, setShowCreateOrJoinModal] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const hasLoadedRef = useRef(false);
@@ -226,6 +226,7 @@ export default function Home() {
               <ExpensesByPeriodChart 
                 data={dashboardStats.expensesByPeriod} 
                 dailyData={dashboardStats.expensesByDay}
+                onYearChange={fetchYear}
               />
             ) : (
               <div className="text-center text-text-muted py-8">

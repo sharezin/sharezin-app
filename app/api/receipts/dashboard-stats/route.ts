@@ -4,6 +4,13 @@ import { createServerClient } from '@/lib/supabase';
 
 // GET /api/receipts/dashboard-stats - Buscar estatísticas do dashboard
 export async function GET(request: NextRequest) {
+  // Cache no servidor - revalidar a cada 5 minutos
+  const { searchParams } = new URL(request.url);
+  const year = searchParams.get('year') || new Date().getFullYear().toString();
+  
+  // Headers de cache para o Next.js
+  const headers = new Headers();
+  headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600'); // 5 min cache, 10 min stale
   const user = await getAuthUser(request);
   if (!user) {
     return createAuthResponse('Não autenticado');
@@ -11,8 +18,6 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createServerClient();
-    const { searchParams } = new URL(request.url);
-    const year = searchParams.get('year') || new Date().getFullYear().toString();
 
     // Buscar gastos por período (mensal) - apenas recibos fechados
     // Usar RPC ou query direta para agregação no banco
@@ -30,10 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Log detalhado para debug
-    console.log('User ID:', user.id);
-    console.log('Raw expensesByPeriod from Supabase:', expensesByPeriod);
-    console.log('Number of records:', expensesByPeriod?.length || 0);
+    // Log removido para produção - cache reduz necessidade de debug
 
     // Agregar por período mensal (agrupando por período e somando totais)
     const periodMap = new Map<string, { total: number; receiptIds: Set<string> }>();
@@ -67,14 +69,7 @@ export async function GET(request: NextRequest) {
       .filter((item) => item.period) // Filtrar períodos vazios ou nulos
       .sort((a, b) => a.period.localeCompare(b.period));
     
-    // Log para debug (remover em produção se necessário)
-    console.log('=== DASHBOARD STATS DEBUG ===');
-    console.log('User ID:', user.id);
-    console.log('Raw expenses count:', expensesByPeriod?.length || 0);
-    console.log('Periods found in Map:', Array.from(periodMap.keys()));
-    console.log('Expenses by period array:', expensesByPeriodArray);
-    console.log('Expenses by period (formatted):', expensesByPeriodArray.map(item => `${item.period}: R$ ${item.total} (${item.receiptCount} recibos)`));
-    console.log('=== END DEBUG ===');
+    // Log removido para produção
 
     // Buscar gastos por dia (diário) do ano especificado - apenas recibos fechados
     const { data: expensesByDayRaw, error: dayError } = await supabase
@@ -179,7 +174,7 @@ export async function GET(request: NextRequest) {
       expensesByPeriod: expensesByPeriodArray,
       expensesByDay: expensesByDayArray,
       expenseDistribution: expenseDistributionArray,
-    });
+    }, { headers });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
