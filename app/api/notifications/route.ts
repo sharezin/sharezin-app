@@ -31,8 +31,6 @@ export async function GET(request: NextRequest) {
     const { data: notifications, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching notifications:', error);
-      
       // Se o erro for sobre tabela não encontrada no cache, retornar erro específico
       if (error.code === 'PGRST205' || error.message?.includes('schema cache')) {
         return NextResponse.json(
@@ -65,7 +63,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error in GET /api/notifications:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -106,7 +103,6 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      console.error('Error creating notification:', error);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao criar notificação' },
         { status: 500 }
@@ -115,7 +111,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/notifications:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -143,7 +138,6 @@ export async function PUT(request: NextRequest) {
         .eq('is_read', false);
 
       if (error) {
-        console.error('Error marking all as read:', error);
         return NextResponse.json(
           { error: 'Internal Server Error', message: 'Erro ao marcar notificações como lidas' },
           { status: 500 }
@@ -160,7 +154,6 @@ export async function PUT(request: NextRequest) {
         .in('id', body.notificationIds);
 
       if (error) {
-        console.error('Error marking notifications as read:', error);
         return NextResponse.json(
           { error: 'Internal Server Error', message: 'Erro ao marcar notificações como lidas' },
           { status: 500 }
@@ -175,7 +168,6 @@ export async function PUT(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error('Error in PUT /api/notifications:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

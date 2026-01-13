@@ -31,7 +31,6 @@ export async function GET(
 
     return NextResponse.json({ userId: participant.user_id });
   } catch (error) {
-    console.error('Error in GET /api/participants/[id]/user-id:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

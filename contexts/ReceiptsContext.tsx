@@ -127,17 +127,11 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
               await loadReceipts(true);
             }
           )
-          .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {
-            if (status === 'SUBSCRIBED') {
-              console.log('Realtime conectado para recibos');
-            } else {
-              console.warn('Erro na conexão Realtime de recibos:', status);
-            }
-          });
+          .subscribe();
 
         channelRef.current = channel;
       } catch (err) {
-        console.error('Erro ao configurar Realtime de recibos:', err);
+        // Erro ao configurar Realtime - fallback será usado
       }
     }
 

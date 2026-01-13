@@ -102,7 +102,6 @@ export async function DELETE(
 
     return NextResponse.json({ receipt: updatedReceipt });
   } catch (error) {
-    console.error('Erro ao remover participante:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao remover participante' },
       { status: 500 }

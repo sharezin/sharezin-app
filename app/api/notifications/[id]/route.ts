@@ -39,7 +39,6 @@ export async function PUT(
       .eq('user_id', user.id);
 
     if (updateError) {
-      console.error('Error updating notification:', updateError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao atualizar notificação' },
         { status: 500 }
@@ -48,7 +47,6 @@ export async function PUT(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in PUT /api/notifications/[id]:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }
@@ -93,7 +91,6 @@ export async function DELETE(
       .eq('user_id', user.id);
 
     if (deleteError) {
-      console.error('Error deleting notification:', deleteError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao deletar notificação' },
         { status: 500 }
@@ -102,7 +99,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in DELETE /api/notifications/[id]:', error);
     return NextResponse.json(
       { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
       { status: 500 }

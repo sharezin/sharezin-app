@@ -35,21 +35,6 @@ export function useReceiptPermissions({ receipt, currentUserId }: UseReceiptPerm
     );
     const isParticipantClosed = currentParticipant?.isClosed || false;
 
-    // Log para debug
-    if (receipt.creatorId && currentUserId) {
-      console.log('[useReceiptPermissions] Verificação:', {
-        receiptId: receipt.id,
-        receiptCreatorId: receipt.creatorId,
-        currentUserId,
-        isCreator,
-        participants: receipt.participants.map(p => ({
-          id: p.id,
-          userId: p.userId,
-          isCurrentUser: p.id === currentUserId || p.userId === currentUserId,
-        })),
-      });
-    }
-
     return {
       isCreator,
       isParticipant,

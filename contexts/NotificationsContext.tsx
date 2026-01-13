@@ -96,7 +96,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
       );
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      // Erro ao marcar notificação como lida
     }
   }, []);
 
@@ -109,7 +109,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (err) {
-      console.error('Error marking all as read:', err);
+      // Erro ao marcar todas como lidas
     }
   }, []);
 
@@ -121,7 +121,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
     } catch (err) {
-      console.error('Error deleting notification:', err);
+      // Erro ao deletar notificação
     }
   }, []);
 
@@ -214,10 +214,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             }
           )
           .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {
-            if (status === 'SUBSCRIBED') {
-              console.log('Realtime conectado para notificações');
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              console.warn('Erro na conexão Realtime:', status);
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
               realtimeFailedRef.current = true;
               // Fallback para polling se Realtime falhar (a cada 60 segundos para reduzir carga)
               if (!pollingIntervalRef.current) {
@@ -233,7 +230,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
         channelRef.current = channel;
       } catch (err) {
-        console.error('Erro ao configurar Realtime:', err);
         realtimeFailedRef.current = true;
         // Fallback para polling (a cada 60 segundos para reduzir carga)
         if (!pollingIntervalRef.current) {

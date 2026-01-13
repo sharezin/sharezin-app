@@ -214,7 +214,6 @@ export async function PUT(
           }
         } catch (error) {
           // Não falhar a operação principal se as notificações falharem
-          console.error('Erro ao criar notificações de item adicionado:', error);
         }
       }
     }
