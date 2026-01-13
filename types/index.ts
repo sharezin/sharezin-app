@@ -2,6 +2,7 @@ export interface Participant {
   id: string;
   name: string;
   groupId?: string;
+  userId?: string; // ID do usuário associado ao participante
   isClosed?: boolean; // indica se o participante fechou sua participação
 }
 
@@ -60,7 +61,9 @@ export type NotificationType =
   | 'deletion_approved'
   | 'deletion_rejected'
   | 'receipt_closed'
-  | 'item_added';
+  | 'item_added'
+  | 'creator_transferred'
+  | 'creator_transferred_from';
 
 export interface Notification {
   id: string;

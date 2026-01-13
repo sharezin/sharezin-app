@@ -14,6 +14,8 @@ const NAVIGABLE_NOTIFICATION_TYPES: Notification['type'][] = [
   'participant_approved',
   'deletion_request',
   'deletion_approved',
+  'creator_transferred',
+  'creator_transferred_from',
 ];
 
 export function NotificationItem({ notification }: NotificationItemProps) {

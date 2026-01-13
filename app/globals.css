@@ -24,6 +24,18 @@
   /* Legacy variables */
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Shadcn variables */
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --accent: #f4f4f5;
+  --accent-foreground: #171717;
+  --input: #d4d4d8;
+  --ring: #000000;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --card: #ffffff;
+  --card-foreground: #171717;
 
   /* Primary Colors */
   --color-primary: #000000;
@@ -82,6 +94,18 @@
   /* Legacy variables */
     --background: #0a0a0a;
     --foreground: #ededed;
+  
+  /* Shadcn variables */
+  --popover: #18181b;
+  --popover-foreground: #ededed;
+  --accent: #27272a;
+  --accent-foreground: #ededed;
+  --input: #52525b;
+  --ring: #ffffff;
+  --muted: #27272a;
+  --muted-foreground: #71717a;
+  --card: #18181b;
+  --card-foreground: #ededed;
 
   /* Primary Colors */
   --color-primary: #ffffff;
@@ -158,4 +182,23 @@ html {
 input, textarea {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* Open Receipt Alert Styles */
+.open-receipt-alert {
+  background-color: rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+.open-receipt-alert:hover {
+  background-color: rgba(22, 163, 74, 0.2);
+}
+
+[data-theme="dark"] .open-receipt-alert {
+  background-color: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="dark"] .open-receipt-alert:hover {
+  background-color: rgba(34, 197, 94, 0.2);
 }

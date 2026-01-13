@@ -22,7 +22,7 @@ export function OpenReceiptsAlert({ receipts }: OpenReceiptsAlertProps) {
     <div className="mb-6">
       <Link 
         href={`/receipt/${firstReceipt.id}`}
-        className="block bg-success/10 border border-success/30 rounded-lg p-4 hover:bg-success/15 transition-colors"
+        className="block rounded-lg p-4 transition-colors border open-receipt-alert"
       >
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">

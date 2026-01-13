@@ -11,6 +11,7 @@ interface ReceiptHeaderProps {
   onCloseParticipation: () => void;
   onShowInviteCode: () => void;
   onShowUserReceiptSummary: () => void;
+  onTransferCreator: () => void;
   closingReceipt: boolean;
   closingParticipation: boolean;
   currentUserId: string;
@@ -23,6 +24,7 @@ export function ReceiptHeader({
   onCloseParticipation,
   onShowInviteCode,
   onShowUserReceiptSummary,
+  onTransferCreator,
   closingReceipt,
   closingParticipation,
   currentUserId,
@@ -44,6 +46,7 @@ export function ReceiptHeader({
             onCloseParticipation={onCloseParticipation}
             onShowInviteCode={onShowInviteCode}
             onShowUserReceiptSummary={onShowUserReceiptSummary}
+            onTransferCreator={onTransferCreator}
             closingReceipt={closingReceipt}
             closingParticipation={closingParticipation}
             currentUserId={currentUserId}

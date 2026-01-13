@@ -82,8 +82,8 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
       channelRef.current = null;
     }
 
-    // Carregar recibos iniciais
-    loadReceipts(false);
+    // Carregar recibos iniciais (com fechados para ter dados completos)
+    loadReceipts(true);
 
     // Tentar conectar ao Realtime para recibos
     if (supabase) {
@@ -100,7 +100,7 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
             },
             async (payload: { eventType: string; new?: any; old?: any }) => {
               // Recarregar recibos quando houver mudanças
-              await loadReceipts(false);
+              await loadReceipts(true);
             }
           )
           .on(
@@ -112,7 +112,7 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
             },
             async () => {
               // Recarregar recibos quando itens mudarem
-              await loadReceipts(false);
+              await loadReceipts(true);
             }
           )
           .on(
@@ -124,7 +124,7 @@ export function ReceiptsProvider({ children }: { children: ReactNode }) {
             },
             async () => {
               // Recarregar recibos quando participantes mudarem
-              await loadReceipts(false);
+              await loadReceipts(true);
             }
           )
           .subscribe((status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => {

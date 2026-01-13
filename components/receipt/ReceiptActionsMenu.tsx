@@ -11,6 +11,7 @@ interface ReceiptActionsMenuProps {
   onCloseParticipation: () => void;
   onShowInviteCode: () => void;
   onShowUserReceiptSummary: () => void;
+  onTransferCreator: () => void;
   closingReceipt: boolean;
   closingParticipation: boolean;
   currentUserId: string;
@@ -23,6 +24,7 @@ export function ReceiptActionsMenu({
   onCloseParticipation,
   onShowInviteCode,
   onShowUserReceiptSummary,
+  onTransferCreator,
   closingReceipt,
   closingParticipation,
   currentUserId,
@@ -106,14 +108,39 @@ export function ReceiptActionsMenu({
             </button>
             <div className="border-t border-border-strong"></div>
             {isCreator ? (
-              <button
-                onClick={() => {
-                  setShowMenu(false);
-                  onCloseReceipt();
-                }}
-                disabled={receipt.isClosed || closingReceipt}
-                className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
-              >
+              <>
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onTransferCreator();
+                  }}
+                  disabled={receipt.isClosed}
+                  className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                    />
+                  </svg>
+                  Transferir Criador
+                </button>
+                <div className="border-t border-border-strong"></div>
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onCloseReceipt();
+                  }}
+                  disabled={receipt.isClosed || closingReceipt}
+                  className="w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-secondary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg flex items-center gap-2"
+                >
                 {closingReceipt ? (
                   <>
                     <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -128,6 +155,7 @@ export function ReceiptActionsMenu({
                   'Fechar Recibo'
                 )}
               </button>
+              </>
             ) : (
               <button
                 onClick={() => {
