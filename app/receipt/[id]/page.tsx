@@ -79,6 +79,7 @@ export default function ReceiptDetailPage() {
   const [requestingDeletionItemId, setRequestingDeletionItemId] = useState<string | null>(null);
   const [approvingDeletionRequestId, setApprovingDeletionRequestId] = useState<string | null>(null);
   const [rejectingDeletionRequestId, setRejectingDeletionRequestId] = useState<string | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
   const [showTransferCreatorModal, setShowTransferCreatorModal] = useState(false);
   const [transferringCreator, setTransferringCreator] = useState(false);
@@ -590,6 +591,12 @@ export default function ReceiptDetailPage() {
   const confirmDeleteItem = async () => {
     if (!receipt || !deleteConfirm.itemId) return;
     
+    setDeletingItemId(deleteConfirm.itemId);
+    
+    // Buscar o nome do item antes de removê-lo para o feedback
+    const itemToDelete = receipt.items.find(item => item.id === deleteConfirm.itemId);
+    const itemName = itemToDelete?.name || 'produto';
+    
     // Remove o item e também remove solicitações relacionadas
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -601,6 +608,14 @@ export default function ReceiptDetailPage() {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
       setDeleteConfirm({ isOpen: false, itemId: null });
+      
+      // Feedback de sucesso
+      setAlertModal({
+        isOpen: true,
+        title: 'Sucesso',
+        message: `${itemName} foi removido do recibo`,
+        variant: 'success',
+      });
     } catch (error) {
       setAlertModal({
         isOpen: true,
@@ -608,6 +623,8 @@ export default function ReceiptDetailPage() {
         message: 'Erro ao excluir produto. Tente novamente.',
         variant: 'error',
       });
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -1209,6 +1226,7 @@ export default function ReceiptDetailPage() {
         confirmText="Excluir"
         cancelText="Cancelar"
         confirmVariant="danger"
+        loading={deletingItemId !== null}
       />
 
       <ConfirmModal
