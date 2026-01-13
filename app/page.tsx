@@ -47,20 +47,18 @@ export default function Home() {
     enabled: !!user?.id && !loading,
   });
 
-  // Carrega todos os recibos (incluindo fechados) para estatísticas
-  // Esta requisição será compartilhada com a tela de recibos
+  // O contexto já carrega os recibos automaticamente com includeClosed=true
+  // Apenas marca como carregado quando os dados estiverem disponíveis
   useEffect(() => {
-    if (user?.id && pathname === '/' && !hasLoadedRef.current) {
+    if (user?.id && pathname === '/' && !hasLoadedRef.current && receipts.length > 0) {
       hasLoadedRef.current = true;
-      setIsInitialLoad(true);
-      // Usa queueMicrotask para garantir que a atualização aconteça após o render
-      queueMicrotask(() => {
-        loadReceipts(true).then(() => {
-          setIsInitialLoad(false);
-        });
-      });
+      setIsInitialLoad(false);
+    } else if (user?.id && pathname === '/' && !hasLoadedRef.current && !loading) {
+      // Se não houver recibos e não estiver carregando, marca como carregado
+      hasLoadedRef.current = true;
+      setIsInitialLoad(false);
     }
-  }, [user?.id, pathname, loadReceipts]);
+  }, [user?.id, pathname, receipts.length, loading]);
 
   // Reset flag quando mudar de página ou usuário
   useEffect(() => {

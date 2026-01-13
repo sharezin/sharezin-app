@@ -11,7 +11,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Receipt } from '@/types';
 import dynamic from 'next/dynamic';
 
-const DynamicCreateOrJoinReceiptModal = dynamic(() => import('@/components/CreateOrJoinReceiptModal').then(mod => ({ default: mod.CreateOrJoinReceiptModal })), {
+const DynamicSearchReceipt = dynamic(() => import('@/components/SearchReceipt').then(mod => ({ default: mod.SearchReceipt })), {
   loading: () => null,
   ssr: false,
 });
@@ -24,7 +24,7 @@ export default function ReceiptsPage() {
   const searchParams = useSearchParams();
   const { receipts, loading, loadReceipts } = useReceiptsContext();
   const { user } = useAuth();
-  const [showCreateOrJoinModal, setShowCreateOrJoinModal] = useState(false);
+  const [showSearchReceiptModal, setShowSearchReceiptModal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('open');
   const [hasLoaded, setHasLoaded] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -140,7 +140,7 @@ export default function ReceiptsPage() {
   });
 
   const handleCreateReceipt = () => {
-    setShowCreateOrJoinModal(true);
+    router.push('/receipt/new');
   };
 
   const handleFilterChange = (newFilter: FilterType) => {
@@ -267,35 +267,58 @@ export default function ReceiptsPage() {
         )}
       </div>
 
-      {showCreateOrJoinModal && (
-        <DynamicCreateOrJoinReceiptModal
-          isOpen={showCreateOrJoinModal}
-          onClose={() => setShowCreateOrJoinModal(false)}
+      {showSearchReceiptModal && (
+        <DynamicSearchReceipt
+          onClose={() => setShowSearchReceiptModal(false)}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
         />
       )}
 
-      {/* Floating Action Button */}
-      <button
-        onClick={handleCreateReceipt}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center z-[60]"
-        aria-label="Adicionar recibo"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-24 right-6 flex flex-col gap-3 z-[60] items-end">
+        {/* Botão de entrar em recibo - 20% menor */}
+        <button
+          onClick={() => setShowSearchReceiptModal(true)}
+          className="w-11 h-11 rounded-full bg-secondary text-text-primary font-medium hover:bg-secondary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center"
+          aria-label="Entrar em recibo"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      </button>
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+            />
+          </svg>
+        </button>
+
+        {/* Botão de adicionar recibo */}
+        <button
+          onClick={handleCreateReceipt}
+          className="w-14 h-14 rounded-full bg-primary text-text-inverse font-medium hover:bg-primary-hover transition-colors shadow-lg hover:shadow-xl flex items-center justify-center"
+          aria-label="Adicionar recibo"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

@@ -28,6 +28,10 @@ const ParticipantReceiptModal = dynamic(() => import('@/components/ParticipantRe
 const UserReceiptSummaryModal = dynamic(() => import('@/components/UserReceiptSummaryModal').then(mod => ({ default: mod.UserReceiptSummaryModal })), {
   ssr: false,
 });
+
+const TransferCreatorModal = dynamic(() => import('@/components/TransferCreatorModal').then(mod => ({ default: mod.TransferCreatorModal })), {
+  ssr: false,
+});
 import { ReceiptHeader } from '@/components/receipt/ReceiptHeader';
 import { ReceiptTotalCard } from '@/components/receipt/ReceiptTotalCard';
 import { PendingParticipantsList } from '@/components/receipt/PendingParticipantsList';
@@ -75,6 +79,8 @@ export default function ReceiptDetailPage() {
   const [approvingDeletionRequestId, setApprovingDeletionRequestId] = useState<string | null>(null);
   const [rejectingDeletionRequestId, setRejectingDeletionRequestId] = useState<string | null>(null);
   const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
+  const [showTransferCreatorModal, setShowTransferCreatorModal] = useState(false);
+  const [transferringCreator, setTransferringCreator] = useState(false);
   
   // Ref para gerenciar Realtime
   const channelRef = useRef<any>(null);
@@ -101,6 +107,19 @@ export default function ReceiptDetailPage() {
     receipt,
     currentUserId,
   });
+
+  // Log para debug de permissões
+  useEffect(() => {
+    if (receipt && currentUserId) {
+      console.log('[ReceiptPage] Verificação de permissões:', {
+        receiptId: receipt.id,
+        receiptCreatorId: receipt.creatorId,
+        currentUserId,
+        isCreator,
+        match: receipt.creatorId === currentUserId,
+      });
+    }
+  }, [receipt?.id, receipt?.creatorId, currentUserId, isCreator]);
 
   const loadReceipt = useCallback(async () => {
     const id = params.id as string;
@@ -803,6 +822,38 @@ export default function ReceiptDetailPage() {
     }
   };
 
+  const handleTransferCreatorComplete = async (updatedReceipt: Receipt) => {
+    // Log para verificar se há alguma lógica que fecha participação
+    console.log('[TransferCreator] Recebendo recibo atualizado após transferência:', {
+      receiptId: updatedReceipt.id,
+      creatorId: updatedReceipt.creatorId,
+      currentUserId,
+      isNewCreator: updatedReceipt.creatorId === currentUserId,
+      participants: updatedReceipt.participants.map(p => ({
+        id: p.id,
+        userId: p.userId,
+        name: p.name,
+        isClosed: p.isClosed,
+        isCurrentUser: p.id === currentUserId || p.userId === currentUserId,
+        isCreator: p.userId === updatedReceipt.creatorId,
+      })),
+    });
+    
+    // Atualizar o recibo no estado
+    setReceipt(updatedReceipt);
+    setShowTransferCreatorModal(false);
+    setTransferringCreator(false);
+    
+    // Log após atualizar o estado para verificar se as permissões foram atualizadas
+    setTimeout(() => {
+      console.log('[TransferCreator] Estado após atualização:', {
+        receiptCreatorId: updatedReceipt.creatorId,
+        currentUserId,
+        shouldBeCreator: updatedReceipt.creatorId === currentUserId,
+      });
+    }, 100);
+  };
+
   // Ordena itens por data de adição (mais recente primeiro)
   // Usa useMemo para evitar recálculos desnecessários e garantir estabilidade
   // IMPORTANTE: Este hook deve estar ANTES de qualquer early return para seguir as regras dos Hooks do React
@@ -839,6 +890,7 @@ export default function ReceiptDetailPage() {
           onCloseParticipation={() => setCloseParticipationConfirm(true)}
           onShowInviteCode={() => setShowInviteCodeModal(true)}
           onShowUserReceiptSummary={() => setShowUserReceiptSummary(true)}
+          onTransferCreator={() => setShowTransferCreatorModal(true)}
           closingReceipt={closingReceipt}
           closingParticipation={closingParticipation}
           currentUserId={currentUserId}
@@ -1013,6 +1065,16 @@ export default function ReceiptDetailPage() {
               receipt={receipt}
               userId={currentUserId}
               userName={currentUserName}
+            />
+          )}
+          {showTransferCreatorModal && (
+            <TransferCreatorModal
+              isOpen={showTransferCreatorModal}
+              onClose={() => setShowTransferCreatorModal(false)}
+              receipt={receipt}
+              currentUserId={currentUserId}
+              onTransferComplete={handleTransferCreatorComplete}
+              isRequired={false}
             />
           )}
         </>

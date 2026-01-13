@@ -49,6 +49,7 @@ export function useDashboardStats() {
   const [error, setError] = useState<string | null>(null);
   const currentYearRef = useRef<string | null>(null);
   const loadingYearRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   const fetchStats = useCallback(async (year?: string, forceRefresh: boolean = false) => {
     if (!user?.id) {
@@ -118,8 +119,34 @@ export function useDashboardStats() {
   }, [user?.id]);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    if (!user?.id) {
+      setLoading(false);
+      setStats(null);
+      hasInitializedRef.current = false;
+      return;
+    }
+
+    // Verificar cache primeiro antes de fazer requisição
+    const yearParam = new Date().getFullYear().toString();
+    const cacheKey = getCacheKey(user.id, yearParam);
+    const cached = cache.get(cacheKey);
+    
+    if (cached && isCacheValid(cached.timestamp)) {
+      // Usar dados do cache imediatamente
+      setStats(cached.data);
+      setLoading(false);
+      setError(null);
+      currentYearRef.current = yearParam;
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // Se não houver cache válido e ainda não inicializou, buscar dados
+    if (!hasInitializedRef.current && !loadingYearRef.current) {
+      hasInitializedRef.current = true;
+      fetchStats();
+    }
+  }, [user?.id, fetchStats]);
 
   // Função para buscar dados de um ano específico (usando cache se disponível)
   const fetchYear = useCallback(async (year: string) => {
