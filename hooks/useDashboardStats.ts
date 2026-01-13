@@ -10,6 +10,12 @@ export interface ExpenseByPeriod {
   receiptCount: number;
 }
 
+export interface ExpenseByDay {
+  day: string; // YYYY-MM-DD
+  total: number;
+  receiptCount: number;
+}
+
 export interface ExpenseDistribution {
   receiptId: string;
   receiptTitle: string;
@@ -20,6 +26,7 @@ export interface ExpenseDistribution {
 
 export interface DashboardStats {
   expensesByPeriod: ExpenseByPeriod[];
+  expensesByDay?: ExpenseByDay[];
   expenseDistribution: ExpenseDistribution[];
 }
 
@@ -29,7 +36,7 @@ export function useDashboardStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (year?: string) => {
     if (!user?.id) {
       setLoading(false);
       return;
@@ -38,7 +45,9 @@ export function useDashboardStats() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiRequest<DashboardStats>('/api/receipts/dashboard-stats');
+      const yearParam = year || new Date().getFullYear().toString();
+      const url = `/api/receipts/dashboard-stats${yearParam ? `?year=${yearParam}` : ''}`;
+      const data = await apiRequest<DashboardStats>(url);
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar estatísticas');

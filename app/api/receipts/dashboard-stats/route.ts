@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createServerClient();
+    const { searchParams } = new URL(request.url);
+    const year = searchParams.get('year') || new Date().getFullYear().toString();
 
     // Buscar gastos por período (mensal) - apenas recibos fechados
     // Usar RPC ou query direta para agregação no banco
@@ -21,22 +23,38 @@ export async function GET(request: NextRequest) {
       .eq('is_closed', true);
 
     if (periodError) {
+      console.error('Error fetching expenses by period:', periodError);
       return NextResponse.json(
         { error: 'Internal Server Error', message: 'Erro ao buscar gastos por período' },
         { status: 500 }
       );
     }
 
+    // Log detalhado para debug
+    console.log('User ID:', user.id);
+    console.log('Raw expensesByPeriod from Supabase:', expensesByPeriod);
+    console.log('Number of records:', expensesByPeriod?.length || 0);
+
     // Agregar por período mensal (agrupando por período e somando totais)
     const periodMap = new Map<string, { total: number; receiptIds: Set<string> }>();
     
     expensesByPeriod?.forEach((expense) => {
       const period = expense.period_month;
-      const existing = periodMap.get(period) || { total: 0, receiptIds: new Set<string>() };
-      periodMap.set(period, {
-        total: existing.total + Number(expense.total_spent),
-        receiptIds: existing.receiptIds.add(expense.receipt_id),
-      });
+      // Ignorar períodos vazios ou nulos
+      if (!period || period.trim() === '') {
+        console.warn('Período vazio encontrado:', expense);
+        return;
+      }
+      
+      let existing = periodMap.get(period);
+      if (!existing) {
+        existing = { total: 0, receiptIds: new Set<string>() };
+        periodMap.set(period, existing);
+      }
+      
+      // Adicionar ao total e ao Set de receipt IDs
+      existing.total += Number(expense.total_spent);
+      existing.receiptIds.add(expense.receipt_id);
     });
 
     // Converter para array e ordenar
@@ -46,7 +64,59 @@ export async function GET(request: NextRequest) {
         total: Number(data.total.toFixed(2)),
         receiptCount: data.receiptIds.size,
       }))
+      .filter((item) => item.period) // Filtrar períodos vazios ou nulos
       .sort((a, b) => a.period.localeCompare(b.period));
+    
+    // Log para debug (remover em produção se necessário)
+    console.log('=== DASHBOARD STATS DEBUG ===');
+    console.log('User ID:', user.id);
+    console.log('Raw expenses count:', expensesByPeriod?.length || 0);
+    console.log('Periods found in Map:', Array.from(periodMap.keys()));
+    console.log('Expenses by period array:', expensesByPeriodArray);
+    console.log('Expenses by period (formatted):', expensesByPeriodArray.map(item => `${item.period}: R$ ${item.total} (${item.receiptCount} recibos)`));
+    console.log('=== END DEBUG ===');
+
+    // Buscar gastos por dia (diário) do ano especificado - apenas recibos fechados
+    const { data: expensesByDayRaw, error: dayError } = await supabase
+      .from('user_receipt_expenses')
+      .select('period_day, total_spent, receipt_id')
+      .eq('user_id', user.id)
+      .eq('is_closed', true)
+      .like('period_day', `${year}%`); // Filtra por ano
+
+    if (dayError) {
+      console.error('Error fetching expenses by day:', dayError);
+      // Não falhar a requisição, apenas logar o erro
+    }
+
+    // Agregar por dia
+    const dayMap = new Map<string, { total: number; receiptIds: Set<string> }>();
+    expensesByDayRaw?.forEach((expense) => {
+      const day = expense.period_day;
+      // Ignorar dias vazios ou nulos
+      if (!day || day.trim() === '') {
+        return;
+      }
+      
+      let existing = dayMap.get(day);
+      if (!existing) {
+        existing = { total: 0, receiptIds: new Set<string>() };
+        dayMap.set(day, existing);
+      }
+      
+      existing.total += Number(expense.total_spent);
+      existing.receiptIds.add(expense.receipt_id);
+    });
+
+    // Converter para array e ordenar
+    const expensesByDayArray = Array.from(dayMap.entries())
+      .map(([day, data]) => ({
+        day,
+        total: Number(data.total.toFixed(2)),
+        receiptCount: data.receiptIds.size,
+      }))
+      .filter((item) => item.day) // Filtrar dias vazios ou nulos
+      .sort((a, b) => a.day.localeCompare(b.day));
 
     // Buscar distribuição de gastos (por recibo) - apenas recibos fechados
     const { data: expenseDistribution, error: distributionError } = await supabase
@@ -107,6 +177,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       expensesByPeriod: expensesByPeriodArray,
+      expensesByDay: expensesByDayArray,
       expenseDistribution: expenseDistributionArray,
     });
   } catch (error) {
