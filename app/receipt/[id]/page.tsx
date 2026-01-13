@@ -7,6 +7,8 @@ import { useCalculations } from '@/hooks/useCalculations';
 import { useAuth } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReceiptPermissions } from '@/hooks/useReceiptPermissions';
+import { useReceiptLoadingStates } from '@/hooks/receipt/useReceiptLoadingStates';
+import { useReceiptModals } from '@/hooks/receipt/useReceiptModals';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
 import { supabase } from '@/lib/supabase';
 import { apiRequest } from '@/lib/api';
@@ -46,7 +48,6 @@ export default function ReceiptDetailPage() {
   const { getReceiptById, updateReceipt, removeParticipant, closeParticipantParticipation } = useReceipts();
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showProductForm, setShowProductForm] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -58,31 +59,10 @@ export default function ReceiptDetailPage() {
     message: '',
     variant: 'info',
   });
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    isOpen: boolean;
-    itemId: string | null;
-  }>({
-    isOpen: false,
-    itemId: null,
-  });
-  const [closeReceiptConfirm, setCloseReceiptConfirm] = useState(false);
-  const [closeParticipationConfirm, setCloseParticipationConfirm] = useState(false);
-  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
-  const [showUserReceiptSummary, setShowUserReceiptSummary] = useState(false);
-  const [closingReceipt, setClosingReceipt] = useState(false);
-  const [closingParticipation, setClosingParticipation] = useState(false);
-  const [acceptingParticipantId, setAcceptingParticipantId] = useState<string | null>(null);
-  const [rejectingParticipantId, setRejectingParticipantId] = useState<string | null>(null);
-  const [closingParticipantId, setClosingParticipantId] = useState<string | null>(null);
-  const [removingParticipantId, setRemovingParticipantId] = useState<string | null>(null);
-  const [participantToRemove, setParticipantToRemove] = useState<string | null>(null);
-  const [requestingDeletionItemId, setRequestingDeletionItemId] = useState<string | null>(null);
-  const [approvingDeletionRequestId, setApprovingDeletionRequestId] = useState<string | null>(null);
-  const [rejectingDeletionRequestId, setRejectingDeletionRequestId] = useState<string | null>(null);
-  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
-  const [showParticipantReceipt, setShowParticipantReceipt] = useState(false);
-  const [showTransferCreatorModal, setShowTransferCreatorModal] = useState(false);
-  const [transferringCreator, setTransferringCreator] = useState(false);
+  
+  // Hooks para gerenciar estados
+  const { loading: loadingStates, setLoadingState } = useReceiptLoadingStates();
+  const { modals, openModal, closeModal } = useReceiptModals();
   
   // Ref para gerenciar Realtime
   const channelRef = useRef<any>(null);
@@ -585,29 +565,29 @@ export default function ReceiptDetailPage() {
 
   const handleRemoveItem = (itemId: string) => {
     if (!receipt || !isCreator) return;
-    setDeleteConfirm({ isOpen: true, itemId });
+    openModal('deleteItem', itemId);
   };
 
   const confirmDeleteItem = async () => {
-    if (!receipt || !deleteConfirm.itemId) return;
+    if (!receipt || !modals.deleteItem.itemId) return;
     
-    setDeletingItemId(deleteConfirm.itemId);
+    setLoadingState('deletingItem', modals.deleteItem.itemId);
     
     // Buscar o nome do item antes de removê-lo para o feedback
-    const itemToDelete = receipt.items.find(item => item.id === deleteConfirm.itemId);
+    const itemToDelete = receipt.items.find(item => item.id === modals.deleteItem.itemId);
     const itemName = itemToDelete?.name || 'produto';
     
     // Remove o item e também remove solicitações relacionadas
     const updatedReceipt: Receipt = {
       ...receipt,
-      items: receipt.items.filter(item => item.id !== deleteConfirm.itemId),
-      deletionRequests: receipt.deletionRequests.filter(req => req.itemId !== deleteConfirm.itemId),
+      items: receipt.items.filter(item => item.id !== modals.deleteItem.itemId),
+      deletionRequests: receipt.deletionRequests.filter(req => req.itemId !== modals.deleteItem.itemId),
     };
 
     try {
       const savedReceipt = await updateReceipt(updatedReceipt);
       setReceipt(savedReceipt);
-      setDeleteConfirm({ isOpen: false, itemId: null });
+      closeModal('deleteItem');
       
       // Feedback de sucesso
       setAlertModal({
@@ -624,7 +604,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setDeletingItemId(null);
+      setLoadingState('deletingItem', null);
     }
   };
 
@@ -667,7 +647,7 @@ export default function ReceiptDetailPage() {
       return;
     }
 
-    setRequestingDeletionItemId(itemId);
+    setLoadingState('requestingDeletion', itemId);
 
     const newRequest: DeletionRequest = {
       id: crypto.randomUUID(),
@@ -718,7 +698,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setRequestingDeletionItemId(null);
+      setLoadingState('requestingDeletion', null);
     }
   };
 
@@ -728,7 +708,7 @@ export default function ReceiptDetailPage() {
     const request = receipt.deletionRequests.find(req => req.id === requestId);
     if (!request) return;
 
-    setApprovingDeletionRequestId(requestId);
+    setLoadingState('approvingDeletion', requestId);
 
     // Remove o item e a solicitação
     const updatedReceipt: Receipt = {
@@ -771,7 +751,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setApprovingDeletionRequestId(null);
+      setLoadingState('approvingDeletion', null);
     }
   };
 
@@ -781,7 +761,7 @@ export default function ReceiptDetailPage() {
     const request = receipt.deletionRequests.find(req => req.id === requestId);
     if (!request) return;
 
-    setRejectingDeletionRequestId(requestId);
+    setLoadingState('rejectingDeletion', requestId);
 
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -822,7 +802,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setRejectingDeletionRequestId(null);
+      setLoadingState('rejectingDeletion', null);
     }
   };
 
@@ -838,7 +818,7 @@ export default function ReceiptDetailPage() {
     const pendingParticipant = receipt.pendingParticipants.find(p => p.id === pendingParticipantId);
     if (!pendingParticipant) return;
 
-    setAcceptingParticipantId(pendingParticipantId);
+    setLoadingState('acceptingParticipant', pendingParticipantId);
 
     // Cria o participante
     const newParticipant: Participant = {
@@ -888,7 +868,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setAcceptingParticipantId(null);
+      setLoadingState('acceptingParticipant', null);
     }
   };
 
@@ -897,7 +877,7 @@ export default function ReceiptDetailPage() {
 
     const pendingParticipant = receipt.pendingParticipants.find(p => p.id === pendingParticipantId);
     
-    setRejectingParticipantId(pendingParticipantId);
+    setLoadingState('rejectingParticipant', pendingParticipantId);
 
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -941,14 +921,14 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setRejectingParticipantId(null);
+      setLoadingState('rejectingParticipant', null);
     }
   };
 
   const handleCloseReceipt = async () => {
     if (!receipt || !isCreator) return;
 
-    setClosingReceipt(true);
+    setLoadingState('closingReceipt', true);
 
     const updatedReceipt: Receipt = {
       ...receipt,
@@ -960,7 +940,7 @@ export default function ReceiptDetailPage() {
       setReceipt(savedReceipt);
       
       // Fechar modal de confirmação
-      setCloseReceiptConfirm(false);
+      closeModal('closeReceipt');
       
       // Mostrar modal de feedback de sucesso
       setAlertModal({
@@ -971,7 +951,7 @@ export default function ReceiptDetailPage() {
       });
     } catch (error) {
       // Fechar modal de confirmação mesmo em caso de erro
-      setCloseReceiptConfirm(false);
+      closeModal('closeReceipt');
       
       setAlertModal({
         isOpen: true,
@@ -980,7 +960,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setClosingReceipt(false);
+      setLoadingState('closingReceipt', false);
     }
   };
 
@@ -990,7 +970,7 @@ export default function ReceiptDetailPage() {
     const participant = receipt.participants.find(p => p.id === participantId);
     if (!participant) return;
 
-    setRemovingParticipantId(participantId);
+    setLoadingState('removingParticipant', participantId);
 
     try {
       const updatedReceipt = await removeParticipant(receipt.id, participantId);
@@ -1010,8 +990,8 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setRemovingParticipantId(null);
-      setParticipantToRemove(null);
+      setLoadingState('removingParticipant', null);
+      closeModal('removeParticipant');
     }
   };
 
@@ -1021,7 +1001,7 @@ export default function ReceiptDetailPage() {
     const participant = receipt.participants.find(p => p.id === participantId);
     if (!participant) return;
 
-    setClosingParticipantId(participantId);
+    setLoadingState('closingParticipant', participantId);
 
     try {
       const updatedReceipt = await closeParticipantParticipation(receipt.id, participantId);
@@ -1041,7 +1021,7 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setClosingParticipantId(null);
+      setLoadingState('closingParticipant', null);
     }
   };
 
@@ -1051,7 +1031,7 @@ export default function ReceiptDetailPage() {
     const currentParticipant = receipt.participants.find(p => p.id === currentUserId);
     if (!currentParticipant) return;
 
-    setClosingParticipation(true);
+    setLoadingState('closingParticipation', true);
 
     const updatedParticipants = receipt.participants.map(p =>
       p.id === currentUserId ? { ...p, isClosed: true } : p
@@ -1067,7 +1047,7 @@ export default function ReceiptDetailPage() {
       setReceipt(savedReceipt);
       
       // Fechar modal de confirmação
-      setCloseParticipationConfirm(false);
+      closeModal('closeParticipation');
       
       // Mostrar modal de feedback de sucesso
       setAlertModal({
@@ -1079,11 +1059,11 @@ export default function ReceiptDetailPage() {
       
       // Mostrar recibo do participante após um pequeno delay para o usuário ver o feedback
       setTimeout(() => {
-        setShowParticipantReceipt(true);
+        openModal('participantReceipt');
       }, 1500);
     } catch (error) {
       // Fechar modal de confirmação mesmo em caso de erro
-      setCloseParticipationConfirm(false);
+      closeModal('closeParticipation');
       
       setAlertModal({
         isOpen: true,
@@ -1092,14 +1072,14 @@ export default function ReceiptDetailPage() {
         variant: 'error',
       });
     } finally {
-      setClosingParticipation(false);
+      setLoadingState('closingParticipation', false);
     }
   };
 
   const handleTransferCreatorComplete = async (updatedReceipt: Receipt) => {
     setReceipt(updatedReceipt);
-    setShowTransferCreatorModal(false);
-    setTransferringCreator(false);
+    closeModal('transferCreator');
+    setLoadingState('transferringCreator', false);
   };
 
   // Ordena itens por data de adição (mais recente primeiro)
@@ -1134,13 +1114,13 @@ export default function ReceiptDetailPage() {
         <ReceiptHeader
           receipt={receipt}
           isCreator={isCreator}
-          onCloseReceipt={() => setCloseReceiptConfirm(true)}
-          onCloseParticipation={() => setCloseParticipationConfirm(true)}
-          onShowInviteCode={() => setShowInviteCodeModal(true)}
-          onShowUserReceiptSummary={() => setShowUserReceiptSummary(true)}
-          onTransferCreator={() => setShowTransferCreatorModal(true)}
-          closingReceipt={closingReceipt}
-          closingParticipation={closingParticipation}
+          onCloseReceipt={() => openModal('closeReceipt')}
+          onCloseParticipation={() => openModal('closeParticipation')}
+          onShowInviteCode={() => openModal('inviteCode')}
+          onShowUserReceiptSummary={() => openModal('userSummary')}
+          onTransferCreator={() => openModal('transferCreator')}
+          closingReceipt={loadingStates.closingReceipt}
+          closingParticipation={loadingStates.closingParticipation}
           currentUserId={currentUserId}
         />
 
@@ -1151,8 +1131,8 @@ export default function ReceiptDetailPage() {
             pendingParticipants={receipt.pendingParticipants}
             onAccept={handleAcceptParticipant}
             onReject={handleRejectParticipant}
-            acceptingId={acceptingParticipantId}
-            rejectingId={rejectingParticipantId}
+            acceptingId={loadingStates.acceptingParticipant}
+            rejectingId={loadingStates.rejectingParticipant}
           />
         )}
 
@@ -1167,20 +1147,20 @@ export default function ReceiptDetailPage() {
           onRequestDeletion={handleRequestDeletion}
           onApproveDeletion={handleApproveDeletion}
           onRejectDeletion={handleRejectDeletion}
-          requestingDeletionItemId={requestingDeletionItemId}
-          approvingDeletionRequestId={approvingDeletionRequestId}
-          rejectingDeletionRequestId={rejectingDeletionRequestId}
+          requestingDeletionItemId={loadingStates.requestingDeletion}
+          approvingDeletionRequestId={loadingStates.approvingDeletion}
+          rejectingDeletionRequestId={loadingStates.rejectingDeletion}
           onCloseParticipantParticipation={handleCloseParticipantParticipation}
-          onRemoveParticipant={(participantId) => setParticipantToRemove(participantId)}
-          closingParticipantId={closingParticipantId}
-          removingParticipantId={removingParticipantId}
+          onRemoveParticipant={(participantId) => openModal('removeParticipant', participantId)}
+          closingParticipantId={loadingStates.closingParticipant}
+          removingParticipantId={loadingStates.removingParticipant}
         />
       </div>
 
       {/* Botão flutuante para adicionar produto */}
       {canAddItems && (
         <button
-          onClick={() => setShowProductForm(true)}
+          onClick={() => openModal('productForm')}
           className="fixed bottom-24 right-4 sm:right-6 w-14 h-14 rounded-full bg-primary text-text-inverse shadow-lg hover:bg-primary-hover transition-all hover:scale-110 flex items-center justify-center z-40"
           aria-label="Adicionar Produto"
         >
@@ -1200,10 +1180,10 @@ export default function ReceiptDetailPage() {
         </button>
       )}
 
-      {showProductForm && (
+      {modals.productForm && (
         <ProductForm
           onAdd={handleAddProduct}
-          onClose={() => setShowProductForm(false)}
+          onClose={() => closeModal('productForm')}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
         />
@@ -1218,47 +1198,47 @@ export default function ReceiptDetailPage() {
       />
 
       <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, itemId: null })}
+        isOpen={modals.deleteItem.isOpen}
+        onClose={() => closeModal('deleteItem')}
         onConfirm={confirmDeleteItem}
         title="Excluir Produto"
         message="Tem certeza que deseja excluir este produto do recibo?"
         confirmText="Excluir"
         cancelText="Cancelar"
         confirmVariant="danger"
-        loading={deletingItemId !== null}
+        loading={loadingStates.deletingItem !== null}
       />
 
       <ConfirmModal
-        isOpen={participantToRemove !== null}
+        isOpen={modals.removeParticipant.isOpen}
         onClose={() => {
-          if (!removingParticipantId) {
-            setParticipantToRemove(null);
+          if (!loadingStates.removingParticipant) {
+            closeModal('removeParticipant');
           }
         }}
         onConfirm={() => {
-          if (participantToRemove && !removingParticipantId) {
-            handleRemoveParticipant(participantToRemove);
+          if (modals.removeParticipant.participantId && !loadingStates.removingParticipant) {
+            handleRemoveParticipant(modals.removeParticipant.participantId);
           }
         }}
         title="Excluir Participante"
         message={
-          participantToRemove && receipt
-            ? `Tem certeza que deseja excluir ${receipt.participants.find(p => p.id === participantToRemove)?.name || 'este participante'}? Todos os produtos adicionados por ele serão removidos.`
+          modals.removeParticipant.participantId && receipt
+            ? `Tem certeza que deseja excluir ${receipt.participants.find(p => p.id === modals.removeParticipant.participantId)?.name || 'este participante'}? Todos os produtos adicionados por ele serão removidos.`
             : ''
         }
         confirmText="Excluir"
         cancelText="Cancelar"
         confirmVariant="danger"
-        loading={removingParticipantId === participantToRemove}
-        disabled={removingParticipantId === participantToRemove}
+        loading={loadingStates.removingParticipant === modals.removeParticipant.participantId}
+        disabled={loadingStates.removingParticipant === modals.removeParticipant.participantId}
       />
 
       <ConfirmModal
-        isOpen={closeReceiptConfirm}
+        isOpen={modals.closeReceipt}
         onClose={() => {
-          if (!closingReceipt) {
-            setCloseReceiptConfirm(false);
+          if (!loadingStates.closingReceipt) {
+            closeModal('closeReceipt');
           }
         }}
         onConfirm={handleCloseReceipt}
@@ -1267,15 +1247,15 @@ export default function ReceiptDetailPage() {
         confirmText="Fechar Recibo"
         cancelText="Cancelar"
         confirmVariant="warning"
-        loading={closingReceipt}
-        disabled={closingReceipt}
+        loading={loadingStates.closingReceipt}
+        disabled={loadingStates.closingReceipt}
       />
 
       <ConfirmModal
-        isOpen={closeParticipationConfirm}
+        isOpen={modals.closeParticipation}
         onClose={() => {
-          if (!closingParticipation) {
-            setCloseParticipationConfirm(false);
+          if (!loadingStates.closingParticipation) {
+            closeModal('closeParticipation');
           }
         }}
         onConfirm={handleCloseParticipation}
@@ -1284,42 +1264,42 @@ export default function ReceiptDetailPage() {
         confirmText="Fechar Participação"
         cancelText="Cancelar"
         confirmVariant="warning"
-        loading={closingParticipation}
-        disabled={closingParticipation}
+        loading={loadingStates.closingParticipation}
+        disabled={loadingStates.closingParticipation}
       />
 
       {receipt && (
         <>
-          {showInviteCodeModal && (
+          {modals.inviteCode && (
             <InviteCodeModal
-              isOpen={showInviteCodeModal}
-              onClose={() => setShowInviteCodeModal(false)}
+              isOpen={modals.inviteCode}
+              onClose={() => closeModal('inviteCode')}
               inviteCode={receipt.inviteCode}
               receiptTitle={receipt.title}
             />
           )}
-          {showParticipantReceipt && (
+          {modals.participantReceipt && (
             <ParticipantReceiptModal
-              isOpen={showParticipantReceipt}
-              onClose={() => setShowParticipantReceipt(false)}
+              isOpen={modals.participantReceipt}
+              onClose={() => closeModal('participantReceipt')}
               receipt={receipt}
               participantId={currentUserId}
               participantName={currentUserName}
             />
           )}
-          {showUserReceiptSummary && (
+          {modals.userSummary && (
             <UserReceiptSummaryModal
-              isOpen={showUserReceiptSummary}
-              onClose={() => setShowUserReceiptSummary(false)}
+              isOpen={modals.userSummary}
+              onClose={() => closeModal('userSummary')}
               receipt={receipt}
               userId={currentUserId}
               userName={currentUserName}
             />
           )}
-          {showTransferCreatorModal && (
+          {modals.transferCreator && (
             <TransferCreatorModal
-              isOpen={showTransferCreatorModal}
-              onClose={() => setShowTransferCreatorModal(false)}
+              isOpen={modals.transferCreator}
+              onClose={() => closeModal('transferCreator')}
               receipt={receipt}
               currentUserId={currentUserId}
               onTransferComplete={handleTransferCreatorComplete}
