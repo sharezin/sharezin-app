@@ -6,6 +6,7 @@ import { ReceiptsProvider } from "@/contexts/ReceiptsContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { RouteGuard } from "@/components/RouteGuard";
 import { BottomNav } from "@/components/BottomNav";
+import { NotificationAlert } from "@/components/NotificationAlert";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <RouteGuard>
               {children}
               <BottomNav />
+              <NotificationAlert />
             </RouteGuard>
           </NotificationsProvider>
         </ReceiptsProvider>
