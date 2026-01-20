@@ -4,14 +4,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUserPlan } from '@/hooks/useUserPlan';
 import { ConfirmModal } from '@/components/Modal';
 import { Button } from '@/components/ui/Button';
+import dynamic from 'next/dynamic';
+
+const PlansModal = dynamic(() => import('@/components/PlansModal').then(mod => ({ default: mod.PlansModal })), {
+  ssr: false,
+});
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
+  const { plan } = useUserPlan();
   const router = useRouter();
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
   
   const isDarkMode = resolvedTheme === 'dark';
   
@@ -64,6 +72,52 @@ export default function ProfilePage() {
             </div>
 
             <div className="pt-6 border-t border-border-strong space-y-4">
+              {/* Seção de Plano */}
+              <div className="bg-primary/10 rounded-lg p-4 border border-primary/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">
+                      Plano Atual
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {plan?.planDisplayName || 'Carregando...'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (plan?.planName === 'premium' && plan?.expiresAt) {
+                        router.push('/profile/subscription');
+                      } else {
+                        setShowPlansModal(true);
+                      }
+                    }}
+                    variant="primary"
+                    className="text-sm px-3 py-1"
+                  >
+                    {plan?.planName === 'premium' && plan?.expiresAt ? 'Gerenciar' : 'Fazer Upgrade'}
+                  </Button>
+                </div>
+                {plan && (
+                  <div className="text-xs text-text-secondary space-y-1 mt-2">
+                    {plan.maxParticipants !== null && (
+                      <p>• Até {plan.maxParticipants} participantes por recibo</p>
+                    )}
+                    {plan.maxReceiptsPerMonth !== null && (
+                      <p>• Até {plan.maxReceiptsPerMonth} recibos por mês</p>
+                    )}
+                    {plan.expiresAt && (
+                      <p className="text-primary font-medium mt-2">
+                        📅 Expira em: {new Date(plan.expiresAt).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
@@ -193,6 +247,15 @@ export default function ProfilePage() {
         confirmText="Sair"
         cancelText="Cancelar"
         confirmVariant="danger"
+      />
+
+      <PlansModal
+        isOpen={showPlansModal}
+        onClose={() => setShowPlansModal(false)}
+        onUpgrade={() => {
+          setShowPlansModal(false);
+          window.location.reload();
+        }}
       />
     </div>
   );

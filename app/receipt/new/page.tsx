@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useGroups } from '@/hooks/useGroups';
+import { useUserPlan } from '@/hooks/useUserPlan';
 import { AlertModal } from '@/components/Modal';
 import { Input } from '@/components/ui/Input';
 import { NumberInput } from '@/components/forms/NumberInput';
@@ -17,10 +18,15 @@ const DynamicInviteCodeModal = dynamic(() => import('@/components/InviteCodeModa
   ssr: false,
 });
 
+const DynamicPlansModal = dynamic(() => import('@/components/PlansModal').then(mod => ({ default: mod.PlansModal })), {
+  ssr: false,
+});
+
 export default function NewReceiptPage() {
   const router = useRouter();
   const { createReceipt, updateReceipt } = useReceipts();
   const { groups } = useGroups();
+  const { plan, canCreateReceipt } = useUserPlan();
   const [title, setTitle] = useState('');
   const [serviceChargePercent, setServiceChargePercent] = useState('');
   const [cover, setCover] = useState('');
@@ -39,6 +45,7 @@ export default function NewReceiptPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [newReceipt, setNewReceipt] = useState<{ id: string; title: string; inviteCode: string } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -68,13 +75,26 @@ export default function NewReceiptPage() {
       });
       
       setShowInviteModal(true);
-    } catch (error) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Erro',
-        message: 'Erro ao criar recibo. Tente novamente.',
-        variant: 'error',
-      });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro ao criar recibo. Tente novamente.';
+      
+      // Verificar se é erro de limite de plano
+      if (errorMessage.includes('Plan Limit') || errorMessage.includes('limite')) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Limite Atingido',
+          message: errorMessage + ' Deseja fazer upgrade para o plano Premium?',
+          variant: 'warning',
+        });
+        setShowPlansModal(true);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Erro',
+          message: errorMessage,
+          variant: 'error',
+        });
+      }
     } finally {
       setIsCreating(false);
     }
@@ -174,6 +194,16 @@ export default function NewReceiptPage() {
           receiptTitle={newReceipt.title}
         />
       )}
+
+      <DynamicPlansModal
+        isOpen={showPlansModal}
+        onClose={() => setShowPlansModal(false)}
+        onUpgrade={() => {
+          setShowPlansModal(false);
+          // Recarregar plano após upgrade
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

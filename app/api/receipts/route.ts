@@ -3,6 +3,8 @@ import { getAuthUser, createAuthResponse } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils';
 import { fetchReceiptData } from '@/lib/services/receiptDataService';
+import { getUserPlanLimits } from '@/lib/services/planService';
+import { canCreateReceipt, countReceiptsThisMonth } from '@/lib/services/planService';
 
 // GET /api/receipts - Listar recibos
 export async function GET(request: NextRequest) {
@@ -58,6 +60,13 @@ export async function GET(request: NextRequest) {
     if (onlyClosed) {
       // Se onlyClosed=true, retornar apenas recibos fechados (para histórico)
       query = query.eq('is_closed', true);
+      
+      // Aplicar limite de histórico se houver
+      const planLimits = await getUserPlanLimits(user.id);
+      if (planLimits.maxHistoryReceipts !== null) {
+        // Limitar quantidade de recibos retornados
+        query = query.limit(planLimits.maxHistoryReceipts);
+      }
     } else if (!includeClosed) {
       // Se includeClosed=false, retornar apenas recibos abertos (para home)
       query = query.eq('is_closed', false);
@@ -143,6 +152,18 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createServerClient();
+    
+    // Verificar limite de recibos por mês
+    const receiptsThisMonth = await countReceiptsThisMonth(user.id);
+    const canCreate = await canCreateReceipt(user.id, receiptsThisMonth);
+    
+    if (!canCreate.allowed) {
+      return NextResponse.json(
+        { error: 'Plan Limit', message: canCreate.reason || 'Limite de recibos atingido' },
+        { status: 403 }
+      );
+    }
+
     const inviteCode = generateInviteCode();
 
     // Criar recibo

@@ -9,6 +9,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReceiptPermissions } from '@/hooks/useReceiptPermissions';
 import { useReceiptLoadingStates } from '@/hooks/receipt/useReceiptLoadingStates';
 import { useReceiptModals } from '@/hooks/receipt/useReceiptModals';
+import { useUserPlan } from '@/hooks/useUserPlan';
 import { AlertModal, ConfirmModal } from '@/components/Modal';
 import { supabase } from '@/lib/supabase';
 import { apiRequest } from '@/lib/api';
@@ -34,6 +35,11 @@ const UserReceiptSummaryModal = dynamic(() => import('@/components/UserReceiptSu
 const TransferCreatorModal = dynamic(() => import('@/components/TransferCreatorModal').then(mod => ({ default: mod.TransferCreatorModal })), {
   ssr: false,
 });
+
+const PlansModal = dynamic(() => import('@/components/PlansModal').then(mod => ({ default: mod.PlansModal })), {
+  ssr: false,
+});
+
 import { ReceiptHeader } from '@/components/receipt/ReceiptHeader';
 import { ReceiptTotalCard } from '@/components/receipt/ReceiptTotalCard';
 import { PendingParticipantsList } from '@/components/receipt/PendingParticipantsList';
@@ -89,6 +95,12 @@ export default function ReceiptDetailPage() {
     receipt,
     currentUserId,
   });
+
+  // Hook para verificar plano do usuário
+  const { plan, canAddParticipant } = useUserPlan();
+  
+  // Estado para modal de planos
+  const [showPlansModal, setShowPlansModal] = useState(false);
 
 
   const loadReceipt = useCallback(async () => {
@@ -860,13 +872,26 @@ export default function ReceiptDetailPage() {
         message: `${pendingParticipant.name} foi adicionado ao recibo`,
         variant: 'success',
       });
-    } catch (error) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Erro',
-        message: 'Erro ao aceitar participante. Tente novamente.',
-        variant: 'error',
-      });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro ao aceitar participante. Tente novamente.';
+      
+      // Verificar se é erro de limite de plano
+      if (errorMessage.includes('Plan Limit') || errorMessage.includes('limite')) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Limite Atingido',
+          message: errorMessage + ' Deseja fazer upgrade para o plano Premium?',
+          variant: 'warning',
+        });
+        setShowPlansModal(true);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Erro',
+          message: errorMessage,
+          variant: 'error',
+        });
+      }
     } finally {
       setLoadingState('acceptingParticipant', null);
     }
@@ -1127,13 +1152,30 @@ export default function ReceiptDetailPage() {
         <ReceiptTotalCard receipt={receipt} receiptTotal={receiptTotal} />
 
         {isCreator && receipt.pendingParticipants && receipt.pendingParticipants.length > 0 && (
-          <PendingParticipantsList
-            pendingParticipants={receipt.pendingParticipants}
-            onAccept={handleAcceptParticipant}
-            onReject={handleRejectParticipant}
-            acceptingId={loadingStates.acceptingParticipant}
-            rejectingId={loadingStates.rejectingParticipant}
-          />
+          <>
+            <PendingParticipantsList
+              pendingParticipants={receipt.pendingParticipants}
+              onAccept={handleAcceptParticipant}
+              onReject={handleRejectParticipant}
+              acceptingId={loadingStates.acceptingParticipant}
+              rejectingId={loadingStates.rejectingParticipant}
+            />
+            {/* Aviso de limite de participantes */}
+            {plan && plan.maxParticipants !== null && receipt.participants.length >= plan.maxParticipants && (
+              <div className="bg-warning/10 rounded-lg p-4 mb-6 border border-warning/30">
+                <p className="text-sm text-text-primary">
+                  ⚠️ Você atingiu o limite de {plan.maxParticipants} participantes do plano {plan.planDisplayName}.
+                  {receipt.pendingParticipants.length > 0 && ' Não é possível aceitar mais participantes.'}
+                </p>
+                <button
+                  onClick={() => setShowPlansModal(true)}
+                  className="mt-2 text-sm text-primary hover:underline font-medium"
+                >
+                  Fazer upgrade para Premium →
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <ReceiptTabs
@@ -1308,6 +1350,18 @@ export default function ReceiptDetailPage() {
           )}
         </>
       )}
+
+      <PlansModal
+        isOpen={showPlansModal}
+        onClose={() => setShowPlansModal(false)}
+        onUpgrade={() => {
+          setShowPlansModal(false);
+          // Recarregar recibo após upgrade para atualizar limites
+          if (receipt?.id) {
+            loadReceipt();
+          }
+        }}
+      />
     </div>
   );
 }

@@ -69,7 +69,7 @@ Funcionalidades avançadas para uso profissional/frequente:
 ### Limite de Uso (Freemium Clássico)
 
 **Gratuito:**
-- Até 3 recibos ativos simultaneamente
+- Até 3 recibos por mês
 - Máximo de 5 participantes por recibo
 - Histórico limitado (últimos 10)
 
