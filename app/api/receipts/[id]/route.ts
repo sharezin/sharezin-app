@@ -5,6 +5,7 @@ import { checkReceiptAccess } from '@/lib/services/receiptPermissionService';
 import { fetchReceiptData, getReceiptParticipantsWithUserId } from '@/lib/services/receiptDataService';
 import { upsertReceiptParticipants, upsertPendingParticipants, upsertDeletionRequests, upsertReceiptItems } from '@/lib/services/receiptService';
 import { createNotification } from '@/lib/services/notificationService';
+import { canAddParticipant } from '@/lib/services/planService';
 
 // GET /api/receipts/[id] - Buscar recibo por ID
 // Assinatura compatível com tipos do Next.js/Turbopack no build da Vercel
@@ -162,6 +163,31 @@ export async function PUT(
     }
 
     if (body.pendingParticipants !== undefined && Array.isArray(body.pendingParticipants)) {
+      // Verificar limite de participantes antes de aceitar novos participantes pendentes
+      if (canModifyReceipt) {
+        // Buscar dados atuais do recibo
+        const receiptData = await fetchReceiptData(supabase, receiptId);
+        const currentParticipantCount = receiptData.participants.length;
+        
+        // Identificar participantes pendentes que estão sendo removidos (aceitos)
+        // Se um pendingParticipant não está mais na lista, significa que foi aceito
+        const currentPendingIds = receiptData.pendingParticipants.map((pp: any) => pp.id);
+        const newPendingIds = body.pendingParticipants.map((p: any) => p.id);
+        const acceptedPendingIds = currentPendingIds.filter((id: string) => !newPendingIds.includes(id));
+        
+        // Se houver participantes sendo aceitos, verificar limite
+        if (acceptedPendingIds.length > 0) {
+          const newParticipantCount = currentParticipantCount + acceptedPendingIds.length;
+          const canAdd = await canAddParticipant(user.id, receiptId, newParticipantCount);
+          if (!canAdd.allowed) {
+            return NextResponse.json(
+              { error: 'Plan Limit', message: canAdd.reason || 'Limite de participantes atingido' },
+              { status: 403 }
+            );
+          }
+        }
+      }
+      
       await upsertPendingParticipants(supabase, receiptId, body.pendingParticipants);
     }
 

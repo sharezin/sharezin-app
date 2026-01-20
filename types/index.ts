@@ -77,3 +77,49 @@ export interface Notification {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PlanFeatures {
+  dashboard?: boolean;
+  analytics?: boolean;
+  pdfExport?: boolean;
+  excelExport?: boolean;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  priceMonthly: number;
+  maxParticipantsPerReceipt: number | null; // null = ilimitado
+  maxReceiptsPerMonth: number | null; // null = ilimitado
+  maxHistoryReceipts: number | null; // null = ilimitado
+  features: PlanFeatures;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSubscription {
+  id: string;
+  userId: string;
+  planId: string;
+  plan?: Plan;
+  status: 'active' | 'cancelled' | 'expired';
+  startedAt: string;
+  expiresAt?: string;
+  cancelledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserPlan {
+  planId: string;
+  planName: string;
+  planDisplayName: string;
+  maxParticipants: number | null;
+  maxReceiptsPerMonth: number | null;
+  maxHistoryReceipts: number | null;
+  features: PlanFeatures;
+  expiresAt?: string | null; // Data de expiração da assinatura mensal
+}

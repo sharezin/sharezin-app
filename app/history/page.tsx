@@ -1,16 +1,24 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useReceipts } from '@/hooks/useReceipts';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserPlan } from '@/hooks/useUserPlan';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import Link from 'next/link';
 import { ReceiptCard } from '@/components/ui/ReceiptCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import dynamic from 'next/dynamic';
+
+const PlansModal = dynamic(() => import('@/components/PlansModal').then(mod => ({ default: mod.PlansModal })), {
+  ssr: false,
+});
 
 export default function HistoryPage() {
   const { receipts, loading, loadClosedReceipts } = useReceipts();
   const { user } = useAuth();
+  const { plan } = useUserPlan();
+  const [showPlansModal, setShowPlansModal] = useState(false);
   const hasLoadedRef = useRef(false);
 
   // Pull-to-refresh para atualizar recibos fechados
@@ -48,6 +56,10 @@ export default function HistoryPage() {
 
   // Filtra apenas recibos fechados
   const closedReceipts = receipts.filter(receipt => receipt.isClosed);
+  
+  // Verificar se há limite de histórico e se foi atingido
+  const hasHistoryLimit = plan?.maxHistoryReceipts !== null;
+  const isHistoryLimited = hasHistoryLimit && closedReceipts.length >= (plan?.maxHistoryReceipts || 0);
 
   // Agrupa recibos por data
   const groupedByDate = closedReceipts.reduce((acc, receipt) => {
@@ -121,6 +133,20 @@ export default function HistoryPage() {
           </p>
         </div>
 
+        {isHistoryLimited && (
+          <div className="bg-warning/10 rounded-lg p-4 mb-6 border border-warning/30">
+            <p className="text-sm text-text-primary mb-2">
+              ⚠️ Você está visualizando apenas os últimos {plan?.maxHistoryReceipts} recibos fechados do plano {plan?.planDisplayName}.
+            </p>
+            <button
+              onClick={() => setShowPlansModal(true)}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              Fazer upgrade para Premium →
+            </button>
+          </div>
+        )}
+
         {closedReceipts.length === 0 ? (
           <EmptyState
             icon={
@@ -163,6 +189,15 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+
+      <PlansModal
+        isOpen={showPlansModal}
+        onClose={() => setShowPlansModal(false)}
+        onUpgrade={() => {
+          setShowPlansModal(false);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

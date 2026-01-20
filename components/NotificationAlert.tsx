@@ -16,19 +16,15 @@ export function NotificationAlert() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef<boolean>(false);
 
-  // Inicializar com notificações existentes na primeira renderização
+  // Inicializar com notificações existentes quando o componente montar ou quando as notificações mudarem pela primeira vez
+  // IMPORTANTE: Inicializar mesmo quando não há notificações para permitir detecção de novas
   useEffect(() => {
-    if (!isInitializedRef.current && notifications.length > 0) {
+    // Se ainda não inicializou, inicializar agora com as notificações atuais
+    if (!isInitializedRef.current) {
       const currentIds = new Set(notifications.map(n => n.id));
       previousNotificationIdsRef.current = currentIds;
       isInitializedRef.current = true;
-    }
-  }, [notifications]);
-
-  useEffect(() => {
-    // Aguardar inicialização antes de processar novas notificações
-    if (!isInitializedRef.current) {
-      return;
+      return; // Retornar para não processar na primeira vez (evitar mostrar notificações antigas)
     }
 
     // Encontrar a notificação mais recente não lida
@@ -46,7 +42,7 @@ export function NotificationAlert() {
 
     // Verificar se é uma notificação nova (não estava na lista anterior)
     if (latestNotification && !previousNotificationIdsRef.current.has(latestNotification.id)) {
-      // Adicionar ao conjunto de IDs conhecidos (apenas quando exibir)
+      // Adicionar ao conjunto de IDs conhecidos ANTES de exibir (para evitar duplicatas)
       previousNotificationIdsRef.current.add(latestNotification.id);
       
       // Limpar timer anterior se existir
@@ -70,6 +66,7 @@ export function NotificationAlert() {
 
     // Atualizar o conjunto de IDs conhecidos com todas as notificações atuais
     // Isso garante que notificações já conhecidas não sejam exibidas novamente
+    // E remove IDs de notificações que foram deletadas
     const currentIds = new Set(notifications.map(n => n.id));
     // Manter apenas os IDs que ainda existem na lista atual
     previousNotificationIdsRef.current = new Set(
