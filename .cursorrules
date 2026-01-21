@@ -1,0 +1,525 @@
+# Regras do Agente Cursor - Sharezin
+
+## 📋 Visão Geral do Projeto
+
+Sharezin é uma aplicação web Next.js 16 para gerenciar recibos compartilhados e calcular divisões de contas automaticamente. O projeto usa TypeScript, Tailwind CSS, Supabase (PostgreSQL) e segue uma arquitetura em camadas bem definida.
+
+---
+
+## 🏗️ Arquitetura e Estrutura
+
+### Organização de Pastas
+
+- `app/` - Rotas Next.js (App Router) e API Routes
+- `components/` - Componentes React reutilizáveis
+- `contexts/` - Contextos React (Auth, Theme, Receipts, Notifications, UserPlan)
+- `hooks/` - Custom Hooks para lógica reutilizável
+- `lib/` - Utilitários, serviços e funções auxiliares
+  - `services/` - Serviços de negócio (authService, receiptService, etc.)
+  - `transformers/` - Transformadores de dados (snake_case ↔ camelCase)
+- `types/` - Definições TypeScript
+
+### Fluxo de Dados
+
+```
+Componente → Hook → API Route → Service → Supabase → Database
+                ↓
+         Transformação (snake_case ↔ camelCase)
+                ↓
+         Retorno ao componente
+```
+
+**IMPORTANTE**: Sempre seguir este fluxo. Não pular camadas.
+
+---
+
+## 🔤 Convenções de Nomenclatura
+
+### Arquivos e Pastas
+- **Componentes**: PascalCase (`ReceiptCard.tsx`, `ProductForm.tsx`)
+- **Hooks**: camelCase com prefixo `use` (`useReceipts.ts`, `useAuth.ts`)
+- **Serviços**: camelCase com sufixo `Service` (`receiptService.ts`, `authService.ts`)
+- **Utilitários**: camelCase (`calculations.ts`, `utils.ts`)
+- **API Routes**: `route.ts` dentro de pastas nomeadas (`app/api/receipts/route.ts`)
+- **Tipos**: PascalCase (`Receipt`, `Participant`, `ReceiptItem`)
+
+### Variáveis e Funções
+- **Variáveis**: camelCase (`receiptId`, `participantName`)
+- **Funções**: camelCase (`calculateTotal`, `formatCurrency`)
+- **Constantes**: UPPER_SNAKE_CASE (`MAX_PARTICIPANTS`, `DEFAULT_SERVICE_CHARGE`)
+- **Interfaces/Types**: PascalCase (`User`, `ApiReceipt`)
+
+### Banco de Dados
+- **Tabelas**: snake_case (`receipts`, `receipt_items`, `receipt_participants`)
+- **Colunas**: snake_case (`creator_id`, `service_charge_percent`, `is_closed`)
+- **Campos retornados da API**: snake_case (transformar para camelCase no frontend)
+
+---
+
+## 🔄 Transformação de Dados
+
+### Regra Crítica: snake_case ↔ camelCase
+
+**API retorna**: `snake_case` (ex: `creator_id`, `service_charge_percent`, `is_closed`)
+**Frontend usa**: `camelCase` (ex: `creatorId`, `serviceChargePercent`, `isClosed`)
+
+### Como Transformar
+
+1. **Ao receber dados da API**:
+   - Usar `transformToCamelCase<T>()` de `@/lib/api`
+   - Ou usar transformers específicos como `transformReceiptFromApi()` de `@/lib/transformers/receiptTransformer`
+
+2. **Ao enviar dados para API**:
+   - Usar `transformToSnakeCase<T>()` de `@/lib/api`
+   - Ou transformar manualmente campos específicos
+
+3. **Exemplo**:
+```typescript
+// ✅ CORRETO - Recebendo da API
+const apiReceipt = await apiRequest<ApiReceipt>('/api/receipts/123');
+const receipt = transformReceiptFromApi(apiReceipt); // Transforma para camelCase
+
+// ✅ CORRETO - Enviando para API
+const receiptToSend = transformToSnakeCase(receipt);
+await apiRequest('/api/receipts/123', {
+  method: 'PUT',
+  body: JSON.stringify(receiptToSend)
+});
+```
+
+**NUNCA** misturar snake_case e camelCase no mesmo objeto.
+
+---
+
+## 🛡️ Autenticação e Segurança
+
+### Padrões de Autenticação
+
+1. **API Routes**:
+   - Sempre verificar autenticação usando `getAuthUser(request)` de `@/lib/auth`
+   - Retornar `createAuthResponse('Não autenticado')` se não autenticado
+   - Exemplo:
+```typescript
+export async function GET(request: NextRequest) {
+  const user = await getAuthUser(request);
+  if (!user) {
+    return createAuthResponse('Não autenticado');
+  }
+  // ... resto do código
+}
+```
+
+2. **Cliente Supabase**:
+   - **No servidor**: Sempre usar `createServerClient()` de `@/lib/supabase` (usa Service Role Key)
+   - **No cliente**: Usar `supabase` de `@/lib/supabase` (usa Anon Key)
+   - **NUNCA** usar Service Role Key no cliente
+
+3. **Tokens JWT**:
+   - Armazenar em `localStorage` como `auth_token`
+   - Incluir no header: `Authorization: Bearer ${token}`
+   - Usar `apiRequest()` que já adiciona o token automaticamente
+
+### Proteção de Rotas
+
+- Usar `RouteGuard` para proteger rotas no frontend
+- Verificar autenticação em todas as API routes
+
+---
+
+## 📡 API Routes
+
+### Estrutura Padrão
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser, createAuthResponse } from '@/lib/auth';
+import { createServerClient } from '@/lib/supabase';
+
+export async function GET(request: NextRequest) {
+  // 1. Autenticação
+  const user = await getAuthUser(request);
+  if (!user) {
+    return createAuthResponse('Não autenticado');
+  }
+
+  try {
+    // 2. Obter parâmetros
+    const searchParams = request.nextUrl.searchParams;
+    const param = searchParams.get('param');
+
+    // 3. Criar cliente Supabase
+    const supabase = createServerClient();
+
+    // 4. Buscar dados
+    const { data, error } = await supabase.from('table').select('*');
+
+    // 5. Tratar erros
+    if (error) {
+      return NextResponse.json(
+        { error: 'Internal Server Error', message: 'Erro ao buscar dados' },
+        { status: 500 }
+      );
+    }
+
+    // 6. Transformar dados (snake_case → camelCase se necessário)
+    // 7. Retornar resposta
+    return NextResponse.json({ data });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Códigos de Status HTTP
+
+- `200` - Sucesso (GET, PUT)
+- `201` - Criado (POST)
+- `400` - Bad Request (validação)
+- `401` - Não autenticado
+- `403` - Proibido (limite de plano, permissão)
+- `404` - Não encontrado
+- `500` - Erro interno do servidor
+- `503` - Serviço indisponível (ex: cache do Supabase)
+
+### Respostas de Erro
+
+Sempre retornar no formato:
+```typescript
+{
+  error: 'Error Type',
+  message: 'Mensagem amigável para o usuário'
+}
+```
+
+---
+
+## ⚛️ Componentes React
+
+### Componentes Client-Side
+
+- Marcar com `'use client'` no topo do arquivo
+- Usar hooks do Next.js: `useRouter`, `usePathname`, etc.
+
+### Componentes Server-Side
+
+- Não usar `'use client'`
+- Não usar hooks ou estado
+- Apenas para renderização estática
+
+### Padrões de Componentes
+
+1. **Props**: Usar interfaces TypeScript
+2. **Estado**: Usar `useState` ou hooks customizados
+3. **Efeitos**: Usar `useEffect` com dependências corretas
+4. **Callbacks**: Usar `useCallback` para funções passadas como props
+
+### Exemplo de Componente
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { Receipt } from '@/types';
+
+interface ReceiptCardProps {
+  receipt: Receipt;
+  onSelect?: (receipt: Receipt) => void;
+}
+
+export function ReceiptCard({ receipt, onSelect }: ReceiptCardProps) {
+  const [loading, setLoading] = useState(false);
+
+  // ... lógica do componente
+}
+```
+
+---
+
+## 🎣 Custom Hooks
+
+### Padrão de Hooks
+
+1. **Nome**: Começar com `use` (ex: `useReceipts`, `useAuth`)
+2. **Retorno**: Objeto com estado e funções
+3. **Estado interno**: Gerenciar com `useState`
+4. **Efeitos**: Usar `useEffect` para carregamento inicial se necessário
+
+### Exemplo de Hook
+
+```typescript
+export function useReceipts() {
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadReceipts = useCallback(async () => {
+    // ... lógica
+  }, []);
+
+  return {
+    receipts,
+    loading,
+    error,
+    loadReceipts,
+  };
+}
+```
+
+---
+
+## 🔧 Serviços (Services)
+
+### Padrão de Serviços
+
+1. **Localização**: `lib/services/`
+2. **Nome**: `[entidade]Service.ts` (ex: `receiptService.ts`)
+3. **Funções**: Exportar funções puras que recebem `SupabaseClient` como parâmetro
+4. **Sem estado**: Serviços não devem ter estado interno
+
+### Exemplo de Serviço
+
+```typescript
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Receipt } from '@/types';
+
+export async function fetchReceiptData(
+  supabase: SupabaseClient,
+  receiptId: string
+): Promise<ReceiptData> {
+  // ... lógica usando supabase
+  return data;
+}
+```
+
+---
+
+## 🎨 Estilização (Tailwind CSS)
+
+### Classes Tailwind
+
+- Usar classes utilitárias do Tailwind
+- Classes customizadas definidas em `globals.css`
+- Cores: Usar tokens do tema (`bg-primary`, `text-text-primary`, etc.)
+
+### Tema
+
+- Suporte a dark mode via `ThemeContext`
+- Usar classes condicionais para dark mode quando necessário
+
+### Responsividade
+
+- Mobile-first: Começar com classes mobile, depois adicionar breakpoints
+- Breakpoints: `sm:`, `md:`, `lg:`, `xl:`
+
+---
+
+## 📊 Cálculos e Formatação
+
+### Funções de Cálculo
+
+- Localização: `lib/calculations.ts`
+- Sempre arredondar para 2 casas decimais usando `roundToTwoDecimals()`
+- Formatar moeda usando `formatCurrency()` (formato pt-BR)
+
+### Regras de Cálculo
+
+1. **Total do item**: `quantity * price`
+2. **Taxa de serviço**: Proporcional ao consumo de cada participante
+3. **Cover**: Dividido igualmente entre todos os participantes
+4. **Total do recibo**: `itemsTotal + serviceChargeAmount + cover`
+
+---
+
+## 🔔 Notificações
+
+### Tipos de Notificação
+
+Definidos em `types/index.ts`:
+- `participant_request`
+- `participant_approved`
+- `participant_rejected`
+- `deletion_request`
+- `deletion_approved`
+- `deletion_rejected`
+- `receipt_closed`
+- `item_added`
+- `creator_transferred`
+- `creator_transferred_from`
+
+### Criar Notificações
+
+- Usar `notificationService` para criar notificações
+- Sempre incluir `userId`, `type`, `title`, `message`
+- Opcionalmente incluir `receiptId` e `relatedUserId`
+
+---
+
+## 💳 Sistema de Planos
+
+### Verificação de Limites
+
+- Sempre verificar limites do plano antes de operações:
+  - `canCreateReceipt()` - Verificar limite de recibos por mês
+  - `getUserPlanLimits()` - Obter limites do plano do usuário
+  - Verificar `maxParticipantsPerReceipt` ao adicionar participantes
+  - Verificar `maxHistoryReceipts` ao listar recibos fechados
+
+### Retornar Erros de Limite
+
+```typescript
+if (!canCreate.allowed) {
+  return NextResponse.json(
+    { error: 'Plan Limit', message: canCreate.reason || 'Limite atingido' },
+    { status: 403 }
+  );
+}
+```
+
+---
+
+## 🚨 Tratamento de Erros
+
+### API Routes
+
+```typescript
+try {
+  // ... código
+} catch (error) {
+  return NextResponse.json(
+    { error: 'Internal Server Error', message: 'Erro ao processar requisição' },
+    { status: 500 }
+  );
+}
+```
+
+### Frontend (Hooks/Components)
+
+```typescript
+try {
+  // ... código
+} catch (err) {
+  const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+  setError(errorMessage);
+  // Tratar erro de autenticação
+  if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
+    // Limpar estado ou redirecionar
+  }
+}
+```
+
+### Validação
+
+- Sempre validar dados de entrada nas API routes
+- Retornar `400 Bad Request` com mensagem clara para validações
+
+---
+
+## 📝 TypeScript
+
+### Tipos e Interfaces
+
+- Sempre definir tipos para props de componentes
+- Usar interfaces para objetos complexos
+- Usar types para unions e intersections
+- Tipos principais em `types/index.ts`
+
+### Tipagem Estrita
+
+- Sempre tipar retornos de funções
+- Usar `as` apenas quando necessário e com cuidado
+- Preferir type guards ao invés de `as`
+
+### Exemplo
+
+```typescript
+interface Receipt {
+  id: string;
+  title: string;
+  // ... outros campos
+}
+
+function getReceipt(id: string): Promise<Receipt | null> {
+  // ...
+}
+```
+
+---
+
+## 🔍 Busca e Filtros
+
+### Buscar Recibos
+
+- `includeClosed=true`: Retornar todos (abertos + fechados)
+- `onlyClosed=true`: Retornar apenas fechados (histórico)
+- Sem parâmetros: Retornar apenas abertos
+
+### Paginação
+
+- Usar `limit` e `offset` para paginação
+- Padrão: `limit=25`, `offset` calculado a partir da página
+
+---
+
+## 🎯 Boas Práticas Gerais
+
+1. **Imports**: Organizar por tipo (React, Next.js, libs, componentes, tipos)
+2. **Comentários**: Documentar funções complexas e lógica de negócio
+3. **Performance**: Usar `useCallback` e `useMemo` quando apropriado
+4. **Loading States**: Sempre mostrar estados de carregamento
+5. **Error States**: Tratar e exibir erros de forma amigável
+6. **Validação**: Validar dados tanto no frontend quanto no backend
+7. **Segurança**: Nunca expor Service Role Key no cliente
+8. **Transformação**: Sempre transformar dados entre API e frontend
+9. **Consistência**: Seguir padrões existentes no código
+10. **Testes**: Considerar casos extremos e erros
+
+---
+
+## ⚠️ Erros Comuns a Evitar
+
+1. ❌ Misturar `snake_case` e `camelCase` no mesmo objeto
+2. ❌ Usar Service Role Key no cliente
+3. ❌ Pular camadas da arquitetura (ex: componente chamando Supabase diretamente)
+4. ❌ Não verificar autenticação em API routes
+5. ❌ Não validar dados de entrada
+6. ❌ Não tratar erros adequadamente
+7. ❌ Não verificar limites de plano
+8. ❌ Criar componentes sem `'use client'` quando necessário
+9. ❌ Não usar transformers ao receber/enviar dados da API
+10. ❌ Esquecer de atualizar estado após operações assíncronas
+
+---
+
+## 📚 Referências Rápidas
+
+- **Autenticação**: `@/lib/auth` - `getAuthUser()`, `createAuthResponse()`
+- **API Requests**: `@/lib/api` - `apiRequest()`, `transformToCamelCase()`, `transformToSnakeCase()`
+- **Supabase**: `@/lib/supabase` - `createServerClient()` (servidor), `supabase` (cliente)
+- **Cálculos**: `@/lib/calculations` - `calculateReceiptTotal()`, `formatCurrency()`
+- **Transformers**: `@/lib/transformers/receiptTransformer` - `transformReceiptFromApi()`
+- **Tipos**: `@/types` - `Receipt`, `Participant`, `ReceiptItem`, etc.
+- **Hooks**: `@/hooks` - `useReceipts()`, `useAuth()`, etc.
+- **Contextos**: `@/contexts` - `AuthContext`, `ReceiptsContext`, etc.
+
+---
+
+## 🎓 Ao Adicionar Novas Funcionalidades
+
+1. Definir tipos em `types/index.ts`
+2. Criar serviços em `lib/services/` se necessário
+3. Criar hooks em `hooks/` para lógica reutilizável
+4. Criar componentes em `components/` se reutilizável
+5. Criar API routes em `app/api/`
+6. Seguir padrões de transformação de dados
+7. Adicionar validação e tratamento de erros
+8. Verificar limites de plano se aplicável
+9. Adicionar notificações se necessário
+10. Atualizar documentação se necessário
+
+---
+
+**Última atualização**: Baseado na análise do projeto Sharezin
+**Versão**: 1.0
