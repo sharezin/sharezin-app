@@ -197,16 +197,15 @@ export default function SubscriptionPage() {
       {/* Modal de Alerta */}
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-        title={alertModal.title}
-        message={alertModal.message}
-        variant={alertModal.variant}
-        onConfirm={() => {
+        onClose={() => {
           setAlertModal({ ...alertModal, isOpen: false });
           if (alertModal.variant === 'success') {
             router.push('/profile');
           }
         }}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
       />
     </div>
   );
