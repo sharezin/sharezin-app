@@ -1,12 +1,21 @@
 #!/bin/bash
-echo "VERCEL_GIT_COMMIT_REF: $VERCEL_GIT_COMMIT_REF"
+# Script para controlar builds na Vercel (usado como ignoreCommand)
+# Apenas a branch master/main fará build, outras branches serão ignoradas
+#
+# Lógica do ignoreCommand:
+# - exit 0 = IGNORAR build (não fazer build)
+# - exit 1 = PROSSEGUIR com build (fazer build)
 
-if [[ "$VERCEL_GIT_COMMIT_REF" == "master" ]] ; then
-  # Proceed with the build
-  echo "✅ - Build can proceed"
-  exit 0;
+BRANCH="${VERCEL_GIT_COMMIT_REF:-unknown}"
+
+echo "🔍 Verificando branch: $BRANCH"
+
+# Verificar se é a branch principal (master ou main)
+if [[ "$BRANCH" == "master" ]] || [[ "$BRANCH" == "main" ]]; then
+  echo "✅ - Build autorizado para branch: $BRANCH"
+  exit 1;  # Não ignorar = fazer build
 else
-  # Don't build
-  echo "🛑 - Build cancelled"
-  exit 1;
+  echo "🛑 - Build ignorado para branch: $BRANCH"
+  echo "ℹ️  - Apenas as branches 'master' ou 'main' podem fazer build"
+  exit 0;  # Ignorar = não fazer build
 fi
